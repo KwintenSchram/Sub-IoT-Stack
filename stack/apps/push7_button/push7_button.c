@@ -77,6 +77,7 @@ static void userbutton_callback(button_id_t button_id, uint8_t mask, uint8_t ela
         .mask=mask,
         .elapsed_deciseconds=elapsed_deciseconds,
         .buttons_state=buttons_state,
+        .battery_voltage=get_battery_voltage(),
     };
 
     queue_add_file(button_file.bytes, BUTTON_FILE_SIZE, BUTTON_FILE_ID);
@@ -96,7 +97,7 @@ void pir_callback(void *arg)
     {
         pir_file_t pir_file = 
         {
-            .battery_voltage=get_battery_voltage(), //TODO get stored value to avoid delays
+            .battery_voltage=get_battery_voltage(),
         };
         queue_add_file(pir_file.bytes, PIR_FILE_SIZE, PIR_FILE_ID);
     }
