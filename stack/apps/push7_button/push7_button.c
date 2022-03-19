@@ -93,14 +93,12 @@ void send_heartbeat()
 
 void pir_callback(void *arg)
 {
-    if(hw_gpio_get_in(PIR_PIN))
-    {
         pir_file_t pir_file = 
         {
+            .state = hw_gpio_get_in(PIR_PIN),
             .battery_voltage=get_battery_voltage(),
         };
         queue_add_file(pir_file.bytes, PIR_FILE_SIZE, PIR_FILE_ID);
-    }
 }
 
 void bootstrap()

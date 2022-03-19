@@ -80,12 +80,12 @@ static void queue_transmit_files()
     if((fifo_get_size(&file_fifo) <= 0) || (get_network_manager_state() != NETWORK_MANAGER_READY))
         return;
 
-    uint8_t file_buffer[BUTTON_FILE_SIZE];
+    uint8_t file_buffer[MAX_FILE_SIZE];
     uint8_t file_size;
     uint8_t file_id;
     fifo_peek(&file_size_and_id_fifo, &file_size, 0, 1);
     fifo_peek(&file_size_and_id_fifo, &file_id, 1, 1);
-    fifo_peek(&file_fifo, file_buffer, 0, BUTTON_FILE_SIZE);
+    fifo_peek(&file_fifo, file_buffer, 0, file_size);
     DPRINT("transmitting file %d, size %d", file_id, file_size);
     ret = transmit_file(file_id, 0, file_size, file_buffer);
     if(ret != SUCCESS)
