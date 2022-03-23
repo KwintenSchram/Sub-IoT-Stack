@@ -119,6 +119,7 @@ ADD_LIBRARY(PLATFORM OBJECT
 #Include the sources for the stm32l0 chip
 ADD_CHIP("stm32l0xx")
 ADD_CHIP("stm32_common")
+ADD_CHIP("BME280")
 
 #Include the sources for the radio chip, if needed
 IF(NOT ("${${PLATFORM_PREFIX}_RADIO}" STREQUAL "none"))
