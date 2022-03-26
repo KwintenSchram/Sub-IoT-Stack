@@ -194,7 +194,7 @@ int8_t user_i2c_read(uint8_t reg_addr, uint8_t *data, uint32_t len, void *intf_p
     // id = *((struct identifier *)intf_ptr);
 
 
-    if (i2c_read_memory(id.bmp280_i2c, id.dev_addr, reg_addr, 8, (uint8_t*) data, len))
+    if (!i2c_read_memory(id.bmp280_i2c, id.dev_addr, reg_addr, 8, (uint8_t*) data, len))
     {
         return BME280_E_COMM_FAIL;
     }
@@ -219,7 +219,7 @@ int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *data, uint32_t len, void 
     // struct identifier id;
     // id = *((struct identifier *)intf_ptr);
 
-    if (i2c_write_memory(id.bmp280_i2c, id.dev_addr, reg_addr, 8, (uint8_t*) data, len))
+    if (!i2c_write_memory(id.bmp280_i2c, id.dev_addr, reg_addr, 8, (uint8_t*) data, len))
     {
         return BME280_E_COMM_FAIL;
     }
@@ -289,7 +289,7 @@ int8_t stream_sensor_data_forced_mode(struct bme280_dev *dev)
         if (rslt != BME280_OK)
         {
             log_print_error_string("Failed to set sensor mode (code %+d).", rslt);
-            break;
+            return rslt;
         }
 
         /* Wait for the measurement to complete and print data */
@@ -298,7 +298,7 @@ int8_t stream_sensor_data_forced_mode(struct bme280_dev *dev)
         if (rslt != BME280_OK)
         {
             log_print_error_string("Failed to get sensor data (code %+d).", rslt);
-            break;
+            return rslt;
         }
 
         print_sensor_data(&comp_data);
