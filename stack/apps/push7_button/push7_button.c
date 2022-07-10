@@ -21,121 +21,141 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "hwlcd.h"
-#include "hwleds.h"
-#include "hwsystem.h"
-
-#include "d7ap_fs.h"
+#include "adc_stuff.h"
+#include "button.h"
 #include "debug.h"
+#include "file_definitions.h"
+#include "led.h"
+#include "little_queue.h"
 #include "log.h"
 #include "scheduler.h"
+#include "sensor_manager.h"
 #include "timer.h"
 
-#include "alp_layer.h"
-#include "d7ap.h"
-#include "dae.h"
-
-#include "platform.h"
-
-#include "button.h"
-#include "led.h"
-#include "adc_stuff.h"
-#include "file_definitions.h"
-#include "little_queue.h"
-
-#include "hwgpio.h"
-#include "platform.h"
-#include "scheduler.h"
-#include "stm32_common_gpio.h"
-
-#define ENABLE_PIR_MESSAGE false
 //#define FRAMEWORK_APP_LOG 1
 #ifdef FRAMEWORK_APP_LOG
 #include "log.h"
-    #define DPRINT(...)      log_print_string(__VA_ARGS__)
-    #define DPRINT_DATA(...) log_print_data(__VA_ARGS__)
+#define DPRINT(...) log_print_string(__VA_ARGS__)
+#define DPRINT_DATA(...) log_print_data(__VA_ARGS__)
 #else
-    #define DPRINT(...)
-    #define DPRINT_DATA(...)
+#define DPRINT(...)
+#define DPRINT_DATA(...)
 #endif
 
-// debug
-// cmake ../stack/ -DPLATFORM=PUSH7  -DAPP_PUSH7_BUTTON=y -DMODULE_ALP_SERIAL_INTERFACE_ENABLED=n
-// -DFRAMEWORK_POWER_TRACKING_RF=n -DFRAMEWORK_USE_POWER_TRACKING=n -DMODULE_ALP_LOCK_KEY_FILES=n
-// -DMODULE_D7AP_NLS_ENABLED=y -DFRAMEWORK_SCHEDULER_LP_MODE=1 -DFRAMEWORK_LOG_ENABLED=y  -DFRAMEWORK_DEBUG_ENABLE_SWD=y
-// release
-// cmake ../stack/ -DPLATFORM=PUSH7  -DAPP_PUSH7_BUTTON=y -DMODULE_ALP_SERIAL_INTERFACE_ENABLED=n
-// -DFRAMEWORK_POWER_TRACKING_RF=n -DFRAMEWORK_USE_POWER_TRACKING=n -DMODULE_ALP_LOCK_KEY_FILES=n
-// -DMODULE_D7AP_NLS_ENABLED=y -DFRAMEWORK_SCHEDULER_LP_MODE=1 -DFRAMEWORK_LOG_ENABLED=n -DFRAMEWORK_DEBUG_ENABLE_SWD=n
+#define STATE_COUNTER_EVENT_SEC TIMER_TICKS_PER_SEC * 1
 
+typedef enum { BOOTED_STATE, OPERATIONAL_STATE, CONFIGURATION_STATE } APP_STATE_t;
 
-static void userbutton_callback(button_id_t button_id, uint8_t mask, uint8_t elapsed_deciseconds, buttons_state_t buttons_state)
+typedef enum {
+    BUTTON1_EVENT = 0,
+    BUTTON2_EVENT = 1,
+    BUTTON3_EVENT = 2,
+    HALL_EFFECT_EVENT,
+    STATE_COUNTER_EVENT,
+} input_type_t;
+
+static void app_state_input_event_handler(input_type_t i, bool mask);
+static APP_STATE_t current_app_state = BOOTED_STATE;
+static buttons_state_t current_buttons_state = NO_BUTTON_PRESSED;
+static buttons_state_t previous_buttons_state = NO_BUTTON_PRESSED;
+static uint8_t app_event_counter = 0;
+static bool timer_active = false;
+static uint8_t operational_event_timer_counter = 0;
+
+static void state_counter_event()
 {
-    button_file_t button_file = 
-    {
-        .button_id=button_id,
-        .mask=mask,
-        .elapsed_deciseconds=elapsed_deciseconds,
-        .buttons_state=buttons_state,
-        .battery_voltage=get_battery_voltage(),
-    };
-
-    queue_add_file(button_file.bytes, BUTTON_FILE_SIZE, BUTTON_FILE_ID);
-    DPRINT("Button callback - id: %d, mask: %d, elapsed time: %d, all_button_state %d \n", button_id, mask, elapsed_deciseconds, buttons_state);
+    if (timer_active) {
+        app_state_input_event_handler(STATE_COUNTER_EVENT, false);
+        timer_post_task_delay(&state_counter_event, STATE_COUNTER_EVENT_SEC);
+    }
 }
 
-void send_heartbeat()
+static void app_state_start_timer()
 {
-    // uint64_t button_id = get_battery_voltage();
-    // transmit_file(BUTTON_FILE_ID, 0, BUTTON_FILE_SIZE, (uint8_t*)&button_id);
-    // timer_post_task_delay(&send_heartbeat, TIMER_TICKS_PER_SEC * 10);
+    timer_active = true;
+    operational_event_timer_counter = 0;
+    timer_post_task_delay(&state_counter_event, STATE_COUNTER_EVENT_SEC);
 }
 
-void pir_callback(void *arg)
+static void app_state_stop_timer()
 {
-        pir_file_t pir_file = 
-        {
-            .state = hw_gpio_get_in(PIR_PIN),
-            .battery_voltage=get_battery_voltage(),
-        };
-        queue_add_file(pir_file.bytes, PIR_FILE_SIZE, PIR_FILE_ID);
+    timer_active = false;
+    operational_event_timer_counter = 0;
+    timer_cancel_task(&state_counter_event);
+}
+
+static void switch_state(APP_STATE_t new_state)
+{
+    current_app_state = new_state;
+    sensor_manager_set_state(new_state == OPERATIONAL_STATE);
+}
+
+static void operational_input_event_handler(input_type_t i, bool mask)
+{
+    if (current_buttons_state == ALL_BUTTONS_PRESSED && previous_buttons_state != ALL_BUTTONS_PRESSED) {
+        app_state_start_timer();
+    } else if (previous_buttons_state == ALL_BUTTONS_PRESSED && current_buttons_state != ALL_BUTTONS_PRESSED) {
+        app_state_stop_timer();
+    }
+    switch (i) {
+    case STATE_COUNTER_EVENT:
+        operational_event_timer_counter++;
+        if (operational_event_timer_counter > 10) {
+            switch_state(CONFIGURATION_STATE);
+            app_state_stop_timer();
+        }
+    default:
+        break;
+    }
+}
+
+static void configuration_input_event_handler(input_type_t i, bool mask)
+{
+    //TODO add state timeout
+    //TODO implement sensor config menu here
+    switch (i) {
+    case BUTTON1_EVENT:
+        break;
+    case BUTTON2_EVENT:
+        break;
+    case BUTTON3_EVENT:
+        break;
+    case HALL_EVENT:
+        break;
+    case STATE_COUNTER_EVENT:
+        break;
+    default:
+        break;
+    }
+}
+
+static void app_state_input_event_handler(input_type_t i, bool mask)
+{
+    switch (current_app_state) {
+    case OPERATIONAL_STATE:
+        operational_input_event_handler(i, mask); //wait for NO_BUTTON_PRESSED after state switch
+        break;
+    case CONFIGURATION_STATE:
+        configuration_input_event_handler(i, mask); //wait for NO_BUTTON_PRESSED after state switch
+        break;
+    default:
+        break;
+    }
+}
+
+static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state)
+{
+    current_buttons_state = buttons_state;
+    app_state_input_event_handler(buttons_state, mask);
+    sensor_manager_button_pressed(button_id, mask, buttons_state);
 }
 
 void bootstrap()
 {
     log_print_string("Device booted\n");
-    
     little_queue_init();
     adc_stuff_init();
-
     led_flash_white();
     ubutton_register_callback(&userbutton_callback);
-
-#ifndef FRAMEWORK_DEBUG_ENABLE_SWD
-    GPIO_InitTypeDef GPIO_InitStruct= { 0 };
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Pin = GPIO_PIN_13 | GPIO_PIN_14;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-#endif
-
-    if(ENABLE_PIR_MESSAGE)
-    {
-        GPIO_InitTypeDef pir_supply;
-        pir_supply.Mode  = GPIO_MODE_OUTPUT_PP;
-        pir_supply.Pull  = GPIO_NOPULL;
-        pir_supply.Speed = GPIO_SPEED_FREQ_LOW;
-        hw_gpio_configure_pin_stm(PIR_SUPPLY_PIN, &pir_supply);
-        hw_gpio_set(PIR_SUPPLY_PIN);
-        error_t err;
-        GPIO_InitTypeDef PIR_input;
-        PIR_input.Mode = GPIO_MODE_IT_RISING_FALLING;
-        PIR_input.Pull = GPIO_NOPULL;
-        PIR_input.Speed = GPIO_SPEED_FREQ_LOW;
-        hw_gpio_configure_pin_stm(PIR_PIN, &PIR_input);
-        err = hw_gpio_configure_interrupt(PIR_PIN, GPIO_FALLING_EDGE | GPIO_RISING_EDGE, &pir_callback, NULL);
-        hw_gpio_enable_interrupt(PIR_PIN);
-    }
-
-
+    sched_register_task(&state_counter_event);
 }

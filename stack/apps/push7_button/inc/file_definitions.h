@@ -46,8 +46,6 @@ typedef struct
     };
 } version_file_t;
 
-
-
 #define PIR_FILE_ID 53
 #define PIR_FILE_SIZE sizeof(pir_file_t)
 
@@ -65,5 +63,7 @@ typedef struct
         } __attribute__((__packed__));
     };
 } pir_file_t;
+
+//TODO add HALL EFFECT file, environment file (temperature, humidity and light), permanent config file (interval, state, parameters for pir/light) 
 
 #endif //__FILE_DEFINITION_H

@@ -24,7 +24,6 @@
 #include "platform.h"
 #include "scheduler.h"
 #include "stm32_common_gpio.h"
-#include "timer.h"
 #include <debug.h>
 #include <string.h>
 
@@ -34,7 +33,6 @@
 
 typedef struct {
     pin_id_t button_id;
-    timer_t pressed_down_time;
     bool last_known_state;
     bool triggered;
 } button_info_t;
@@ -53,9 +51,9 @@ __LINK_C void __ubutton_init()
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    buttons[0].button_id = BUTTON1;
-    buttons[1].button_id = BUTTON2;
-    buttons[2].button_id = BUTTON3;
+    buttons[0].button_id = BUTTON1_PIN;
+    buttons[1].button_id = BUTTON2_PIN;
+    buttons[2].button_id = BUTTON3_PIN;
     for (int i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
 	{
         hw_gpio_configure_pin_stm(buttons[i].button_id, &GPIO_InitStruct);
@@ -109,7 +107,6 @@ void button_task()
 	{
         if(buttons[i].triggered) 
 		{
-            timer_t elapsed = 0;
             uint8_t all_button_state = 0;
             buttons[i].triggered = false;
             bool previous_state = buttons[i].last_known_state;
@@ -119,26 +116,14 @@ void button_task()
             if (buttons[i].last_known_state == previous_state) 
                 return;
 
-			//Keep track of pressed time and calculate time difference when letting go
-            if (buttons[i].last_known_state) 
-			{
-                buttons[i].pressed_down_time = timer_get_counter_value();
-            } 
-			else
-			{
-                elapsed = timer_get_counter_value() - buttons[i].pressed_down_time;
-                buttons[i].pressed_down_time = 0;
-            }
 
 			// gather all button states
             for (uint8_t i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
 			{
                 all_button_state += buttons[i].last_known_state << i;
             }
-
-			uint8_t elapsed_deciseconds = (elapsed/100) > 255 ? 255 : (uint8_t)(elapsed/100);
 			
-			button_state_changed_callback(i, buttons[i].last_known_state, elapsed_deciseconds, all_button_state);
+			button_state_changed_callback(i, buttons[i].last_known_state, all_button_state);
             sched_post_task(&button_task);
             return;
         }

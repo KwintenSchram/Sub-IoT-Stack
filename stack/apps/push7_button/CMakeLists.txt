@@ -39,4 +39,4 @@ ELSE()
     SET(libs alp d7ap d7ap_fs framework)
 ENDIF()
 
-APP_BUILD(NAME ${APP_NAME} SOURCES push7_button.c adc_stuff.c network_manager.c little_queue.c LIBS ${libs})
+APP_BUILD(NAME ${APP_NAME} SOURCES push7_button.c adc_stuff.c network_manager.c little_queue.c sensor_manager.c LIBS ${libs})

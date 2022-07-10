@@ -21,56 +21,61 @@
 #define __PLATFORM_H_
 
 #include "platform_defs.h"
-#include "stm32_device.h"
-#include "stm32_common_mcu.h"
 #include "stm32_common_eeprom.h"
+#include "stm32_common_mcu.h"
+#include "stm32_device.h"
 
+#include "blockdevice_ram.h"
 #include "fs.h"
 #include "hwblockdevice.h"
-#include "blockdevice_ram.h"
 
 #ifndef PLATFORM_PUSH7
-    #error Mismatch between the configured platform and the actual platform. Expected PUSH7 to be defined
+#error Mismatch between the configured platform and the actual platform. Expected PUSH7 to be defined
 #endif
 
 /********************
  * LED DEFINITIONS *
  *******************/
 
-#define LED1 PIN(0, 3)
+#define LED1 PIN(0, 4)
 #define LED_WHITE 0
-
 
 /**************************
  * USERBUTTON DEFINITIONS *
  *************************/
 
-#define BUTTON1           PIN(7, 0)
-#define BUTTON2           PIN(0, 11)
-#define BUTTON3           PIN(1, 2)
+#define BUTTON1_PIN PIN(1, 2)
+#define BUTTON2_PIN PIN(1, 5)
+#define BUTTON3_PIN PIN(1, 6)
 
-#define PIR_PIN           PIN(0, 10)
-#define PIR_SUPPLY_PIN    PIN(0,9)
+#define PIR_OUT_PIN PIN(0, 3)
+#define PIR_IN_PIN PIN(0, 2)
+#define PIR_SUPPLY_PIN PIN(1, 14)
+
+#define HAL_EFFECT_PIN PIN(1, 15)
+#define HAL_EFFECT_SUPPLY_PIN PIN(0, 8)
+
+#define ACCELEROMETER_INT_PIN PIN(0, 0)
 
 #if defined(USE_SX127X) || defined(USE_NETDEV_DRIVER)
-  // TODO tmp
-  #define SX127x_SPI_INDEX  0
-  #define SX127x_SPI_PIN_CS  PIN(0, 15)
-  #define SX127x_SPI_BAUDRATE 8000000
-  #define SX127x_DIO0_PIN PIN(1, 4)
-  #define SX127x_DIO1_PIN PIN(1, 1)
-  #ifdef PLATFORM_SX127X_USE_DIO3_PIN
-    #define SX127x_DIO3_PIN PIN(2, 13)
-  #endif
-  #ifdef PLATFORM_SX127X_USE_RESET_PIN
-    #define SX127x_RESET_PIN PIN(2, 0)
-  #endif
-  #ifdef PLATFORM_SX127X_USE_VCC_TXCO
-	#define SX127x_VCC_TXCO PIN(0, 12)
-  #endif
+// TODO tmp
+#define SX127x_SPI_INDEX 0
+#define SX127x_SPI_PIN_CS PIN(0, 15)
+#define SX127x_SPI_BAUDRATE 8000000
+#define SX127x_DIO0_PIN PIN(1, 4)
+#define SX127x_DIO1_PIN PIN(1, 1)
+#ifdef PLATFORM_SX127X_USE_DIO3_PIN
+#define SX127x_DIO3_PIN PIN(2, 13)
+#endif
+#ifdef PLATFORM_SX127X_USE_RESET_PIN
+#define SX127x_RESET_PIN PIN(2, 0)
+#endif
+#ifdef PLATFORM_SX127X_USE_VCC_TXCO
+#define SX127x_VCC_TXCO PIN(7, 1)
+#endif
 #endif
 
-// TODO temp disabled, until set_antenna_switch() is ported 
+// TODO temp disabled, until set_antenna_switch() is ported
 #define PLATFORM_USE_ABZ // this platform is based on the Murata ABZ module
 // Antenna switching uses 3 pins on murata ABZ module
 #define ABZ_ANT_SW_RX_PIN PIN(0, 1)
@@ -78,12 +83,14 @@
 #define ABZ_ANT_SW_PA_BOOST_PIN PIN(2, 1)
 
 /** Platform BD drivers*/
-extern blockdevice_t * const metadata_blockdevice;
-extern blockdevice_t * const persistent_files_blockdevice;
-extern blockdevice_t * const volatile_blockdevice;
+extern blockdevice_t* const metadata_blockdevice;
+extern blockdevice_t* const persistent_files_blockdevice;
+extern blockdevice_t* const volatile_blockdevice;
 #define PLATFORM_METADATA_BLOCKDEVICE metadata_blockdevice
 #define PLATFORM_PERMANENT_BLOCKDEVICE persistent_files_blockdevice
 #define PLATFORM_VOLATILE_BLOCKDEVICE volatile_blockdevice
 
-#endif
+void set_PIR_power_state(bool state);
+void set_HAL_power_state(bool state);
 
+#endif
