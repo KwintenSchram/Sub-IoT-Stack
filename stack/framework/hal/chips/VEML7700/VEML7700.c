@@ -8,11 +8,11 @@
 #include <stdio.h>
 
 #ifdef true
-    #define DPRINT(...)      log_print_string(__VA_ARGS__)
-    #define DPRINT_DATA(...) log_print_data(__VA_ARGS__)
+#define DPRINT(...) log_print_string(__VA_ARGS__)
+#define DPRINT_DATA(...) log_print_data(__VA_ARGS__)
 #else
-    #define DPRINT(...)
-    #define DPRINT_DATA(...)
+#define DPRINT(...)
+#define DPRINT_DATA(...)
 #endif
 
 #define VEML7700_I2C_ADDRESS 0x10
@@ -23,7 +23,9 @@ static VEML7700_CONFIG_REG current_config_reg = { .ALS_GAIN = ALS_GAIN_x1,
     .ALS_INT_EN = 0,
     .ALS_IT = ALS_INTEGRATION_100ms,
     .ALS_PERS = ALS_PERSISTENCE_1,
-    .ALS_SD = 0 };
+    .ALS_SD = 1 };
+
+static uint8_t current_power_mode = ALS_POWER_MODE_4;
 
 typedef enum {
     VEML7700_CONFIGURATION_REGISTER = 0x00,
@@ -35,7 +37,7 @@ typedef enum {
     VEML7700_INTERRUPT_STATUS = 0x06,
 } VEML7700_Pointers;
 
-void convert_data_to_lux(uint16_t raw_counts, float* lux);
+static void convert_data_to_lux(uint16_t raw_counts, float* lux);
 
 /*!
  * @brief This function reading the sensor's registers through I2C bus.
@@ -70,7 +72,7 @@ static error_t user_i2c_write(uint8_t reg_addr, uint16_t data)
 /*!
  * @brief Converts raw output data scaled to set parameters
  */
-void convert_data_to_lux(uint16_t raw_counts, float* lux)
+static void convert_data_to_lux(uint16_t raw_counts, float* lux)
 {
     VEML7700_ALS_GAIN_t gain = current_config_reg.ALS_GAIN;
     VEML7700_ALS_INTEGRATION_TIME_t itime = current_config_reg.ALS_IT;
@@ -134,7 +136,24 @@ error_t VEML7700_init(i2c_handle_t* i2c_handle)
     i2c_dev = i2c_handle;
 
     VEML7700_configure(current_config_reg);
-    VEML7700_set_power_mode(ALS_POWER_MODE_2);
+    VEML7700_set_power_mode(current_power_mode);
+}
+
+void VEML7700_change_settings(uint8_t integration_time, uint8_t persistence_number, uint8_t gain, uint8_t power_mode)
+{
+    VEML7700_CONFIG_REG new_config_reg = { .ALS_GAIN = gain,
+        .ALS_INT_EN = 0,
+        .ALS_IT = integration_time,
+        .ALS_PERS = persistence_number,
+        .ALS_SD = current_config_reg.ALS_SD };
+
+    if (new_config_reg.rawData != current_config_reg.rawData) {
+        current_config_reg.rawData = new_config_reg.rawData;
+        VEML7700_configure(current_config_reg);
+    }
+
+    if (power_mode != current_power_mode)
+        VEML7700_set_power_mode(power_mode);
 }
 
 /*!
@@ -147,7 +166,8 @@ error_t VEML7700_configure(VEML7700_CONFIG_REG reg)
 }
 
 /*!
- * @brief Sets the desired power mode. In combination with VEML7700_ALS_INTEGRATION_TIME it determines the current consumption and sample interval
+ * @brief Sets the desired power mode. In combination with VEML7700_ALS_INTEGRATION_TIME it determines the current
+ * consumption and sample interval
  */
 error_t VEML7700_set_power_mode(VEML7700_ALS_POWER_MODE mode)
 {
@@ -161,7 +181,7 @@ error_t VEML7700_read_ALS_Lux(uint16_t* raw_data, float* parsed_data)
 {
     error_t ret = user_i2c_read(VEML7700_ALS_HIGH_RESOLUTION_OUTPUT_DATA, raw_data);
     convert_data_to_lux(*raw_data, parsed_data);
-    DPRINT("VEML7700 white channel output: %d, scaled output lux %d", *raw_data, (uint32_t)round(*parsed_data));
+    DPRINT("VEML7700 als channel output: %d, scaled output lux %d", *raw_data, (uint32_t)round(*parsed_data));
     return ret;
 }
 
@@ -181,6 +201,10 @@ error_t VEML7700_read_White_Lux(uint16_t* raw_data, float* parsed_data)
  */
 error_t VEML7700_set_shutdown_state(bool state)
 {
-  current_config_reg.ALS_SD = state;
-  return VEML7700_configure(current_config_reg);
+    if (current_config_reg.ALS_SD != state) {
+        current_config_reg.ALS_SD = state;
+        return VEML7700_configure(current_config_reg);
+
+    } else
+        return EALREADY;
 }

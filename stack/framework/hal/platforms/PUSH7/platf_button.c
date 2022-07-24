@@ -43,6 +43,7 @@ button_info_t buttons[PLATFORM_NUM_BUTTONS];
 
 static void button_callback(void* arg);
 static void button_task();
+static uint8_t booted_button_state = 0;
 
 __LINK_C void __ubutton_init()
 {
@@ -59,6 +60,11 @@ __LINK_C void __ubutton_init()
         hw_gpio_configure_pin_stm(buttons[i].button_id, &GPIO_InitStruct);
         err = hw_gpio_configure_interrupt(buttons[i].button_id, GPIO_FALLING_EDGE | GPIO_RISING_EDGE, &button_callback, &buttons[i].button_id);
         assert(err == SUCCESS);
+    }
+    // gather all button states
+    for (uint8_t i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
+    {
+        booted_button_state += hw_gpio_get_in(buttons[i].button_id) << i;
     }
     sched_register_task(&button_task);
 }
@@ -101,7 +107,7 @@ static void button_callback(void* arg)
     	sched_post_task(&button_task);
 }
 
-void button_task()
+static void button_task()
 {
     for (int i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
 	{
@@ -128,4 +134,9 @@ void button_task()
             return;
         }
     }
+}
+
+buttons_state_t button_get_booted_state()
+{
+    return booted_button_state;
 }

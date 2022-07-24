@@ -95,4 +95,6 @@ __LINK_C error_t ubutton_deregister_callback();
 // not a user function
 void __ubutton_init();
 
+buttons_state_t button_get_booted_state();
+
 #endif

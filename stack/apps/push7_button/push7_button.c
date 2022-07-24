@@ -21,18 +21,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "HDC1080DM.h"
+#include "PYD1598.h"
+#include "VEML7700.h"
 #include "adc_stuff.h"
 #include "button.h"
+#include "button_file.h"
 #include "debug.h"
-#include "file_definitions.h"
 #include "led.h"
 #include "little_queue.h"
 #include "log.h"
 #include "scheduler.h"
 #include "sensor_manager.h"
+#include "stm32_common_gpio.h"
 #include "timer.h"
 
-//#define FRAMEWORK_APP_LOG 1
+#define FRAMEWORK_APP_LOG 1
 #ifdef FRAMEWORK_APP_LOG
 #include "log.h"
 #define DPRINT(...) log_print_string(__VA_ARGS__)
@@ -44,7 +48,7 @@
 
 #define STATE_COUNTER_EVENT_SEC TIMER_TICKS_PER_SEC * 1
 
-typedef enum { BOOTED_STATE, OPERATIONAL_STATE, CONFIGURATION_STATE } APP_STATE_t;
+typedef enum { BOOTED_STATE, OPERATIONAL_STATE, CONFIGURATION_STATE, TEST_STATE, TRANSPORT_STATE } APP_STATE_t;
 
 typedef enum {
     BUTTON1_EVENT = 0,
@@ -54,13 +58,32 @@ typedef enum {
     STATE_COUNTER_EVENT,
 } input_type_t;
 
+typedef enum {
+    CONFIG_STATE_OFF = 0,
+    CONFIG_STATE_MAIN_MENU = 1,
+    CONFIG_STATE_SUB_MENU = 2,
+} config_state_t;
+
 static void app_state_input_event_handler(input_type_t i, bool mask);
+static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state);
 static APP_STATE_t current_app_state = BOOTED_STATE;
 static buttons_state_t current_buttons_state = NO_BUTTON_PRESSED;
 static buttons_state_t previous_buttons_state = NO_BUTTON_PRESSED;
+static buttons_state_t max_buttons_state = NO_BUTTON_PRESSED;
+static buttons_state_t prev_max_buttons_state = NO_BUTTON_PRESSED;
 static uint8_t app_event_counter = 0;
 static bool timer_active = false;
 static uint8_t operational_event_timer_counter = 0;
+static config_state_t current_config_menu_state = CONFIG_STATE_OFF;
+static buttons_state_t booted_button_state;
+static bool initial_button_press_released = false;
+static uint8_t sensor_enabled_state_array[ALL_BUTTONS_PRESSED];
+
+static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state)
+{
+    current_buttons_state = buttons_state;
+    app_state_input_event_handler(button_id, mask);
+}
 
 static void state_counter_event()
 {
@@ -86,76 +109,82 @@ static void app_state_stop_timer()
 
 static void switch_state(APP_STATE_t new_state)
 {
+    DPRINT("entering a new state: %d", new_state);
     current_app_state = new_state;
-    sensor_manager_set_state(new_state == OPERATIONAL_STATE);
+    sensor_manager_set_transmit_state(new_state == OPERATIONAL_STATE || new_state == TEST_STATE);
+    sensor_manager_set_test_mode(new_state == TEST_STATE);
+    if (new_state == CONFIGURATION_STATE) {
+        sensor_manager_get_sensor_states(sensor_enabled_state_array);
+    }
 }
 
-static void operational_input_event_handler(input_type_t i, bool mask)
+static void display_state(bool state)
 {
-    if (current_buttons_state == ALL_BUTTONS_PRESSED && previous_buttons_state != ALL_BUTTONS_PRESSED) {
-        app_state_start_timer();
-    } else if (previous_buttons_state == ALL_BUTTONS_PRESSED && current_buttons_state != ALL_BUTTONS_PRESSED) {
-        app_state_stop_timer();
-    }
-    switch (i) {
-    case STATE_COUNTER_EVENT:
-        operational_event_timer_counter++;
-        if (operational_event_timer_counter > 10) {
-            switch_state(CONFIGURATION_STATE);
-            app_state_stop_timer();
-        }
-    default:
-        break;
-    }
+    if (state)
+        led_flash_white();
 }
+
+static void operational_input_event_handler(input_type_t i, bool mask) { }
 
 static void configuration_input_event_handler(input_type_t i, bool mask)
 {
-    //TODO add state timeout
-    //TODO implement sensor config menu here
-    switch (i) {
-    case BUTTON1_EVENT:
-        break;
-    case BUTTON2_EVENT:
-        break;
-    case BUTTON3_EVENT:
-        break;
-    case HALL_EVENT:
-        break;
-    case STATE_COUNTER_EVENT:
-        break;
-    default:
-        break;
-    }
+    if (current_buttons_state == NO_BUTTON_PRESSED) {
+        if(max_buttons_state == NO_BUTTON_PRESSED)
+            return;
+        if (max_buttons_state != prev_max_buttons_state) {
+            DPRINT("showing the state of %d",max_buttons_state );
+            display_state(sensor_enabled_state_array[max_buttons_state]);
+
+        } else {
+            sensor_enabled_state_array[max_buttons_state] = !sensor_enabled_state_array[max_buttons_state];
+            sensor_manager_set_sensor_states(sensor_enabled_state_array);
+            DPRINT("setting the state of %d to %d",max_buttons_state, sensor_enabled_state_array[max_buttons_state] );
+        }
+        prev_max_buttons_state = max_buttons_state;
+        max_buttons_state = NO_BUTTON_PRESSED;
+    } else if (current_buttons_state > max_buttons_state)
+        max_buttons_state = current_buttons_state;
 }
 
 static void app_state_input_event_handler(input_type_t i, bool mask)
 {
+    if (!initial_button_press_released) {
+        if (current_buttons_state == NO_BUTTON_PRESSED)
+            initial_button_press_released = true;
+        return;
+    }
+
     switch (current_app_state) {
     case OPERATIONAL_STATE:
-        operational_input_event_handler(i, mask); //wait for NO_BUTTON_PRESSED after state switch
+        operational_input_event_handler(i, mask);
         break;
     case CONFIGURATION_STATE:
-        configuration_input_event_handler(i, mask); //wait for NO_BUTTON_PRESSED after state switch
+        configuration_input_event_handler(i, mask);
         break;
     default:
         break;
     }
 }
 
-static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state)
-{
-    current_buttons_state = buttons_state;
-    app_state_input_event_handler(buttons_state, mask);
-    sensor_manager_button_pressed(button_id, mask, buttons_state);
-}
-
 void bootstrap()
 {
-    log_print_string("Device booted\n");
     little_queue_init();
-    adc_stuff_init();
     led_flash_white();
-    ubutton_register_callback(&userbutton_callback);
     sched_register_task(&state_counter_event);
+    button_file_register_cb(&userbutton_callback);
+    booted_button_state = button_get_booted_state();
+    sensor_manager_init();
+
+    if (booted_button_state == NO_BUTTON_PRESSED)
+        switch_state(OPERATIONAL_STATE);
+    else if (booted_button_state == BUTTON1_PRESSED) {
+        switch_state(TEST_STATE);
+    } else if (booted_button_state == BUTTON2_PRESSED) {
+        switch_state(CONFIGURATION_STATE);
+    } else if (booted_button_state == BUTTON3_PRESSED) {
+        switch_state(TRANSPORT_STATE);
+    }
+    initial_button_press_released = (booted_button_state == NO_BUTTON_PRESSED);
+
+    log_print_string("Device booted %d\n", booted_button_state);
 }

@@ -19,19 +19,24 @@
 
 #include "adc_stuff.h"
 #include "button.h"
-#include "file_definitions.h"
 #include "led.h"
 #include "little_queue.h"
 
 #include "HDC1080DM.h"
-#include "PYD1598.h"
-#include "VEML7700.h"
+
 #include "hwgpio.h"
 #include "math.h"
 #include "platform.h"
 #include "scheduler.h"
 #include "sensor_manager.h"
 #include "stm32_common_gpio.h"
+
+#include "button_file.h"
+#include "hall_effect_file.h"
+#include "humidity_file.h"
+#include "light_file.h"
+#include "pir_file.h"
+#include "push7_state_file.h"
 
 #ifdef FRAMEWORK_NETWORK_MANAGER_LOG
 #define DPRINT(...) log_print_string(__VA_ARGS__)
@@ -41,61 +46,83 @@
 #define DPRINT_DATA(...)
 #endif
 
-bool prev_state = false;
+static bool current_transmit_state = false;
+static bool current_testmode_state = false;
 
 void sensor_manager_init()
 {
-    // init all files
-    // read config and set correct parameters
-    // modified callback on config to set parameters in sensor driver and readout interval
-    // schedule readouts
+    push7_state_files_initialize();
+    pir_files_initialize();
+    light_files_initialize();
+    humidity_files_initialize();
+    hall_effect_files_initialize();
+    button_files_initialize();
 }
 
-void sensor_manager_set_state(bool state)
+void sensor_manager_set_transmit_state(bool state)
 {
-    if (state && !prev_state) {
-        // turn on all scheduled sensor measurements
-    } else if (!state && prev_state) {
-        // turn off all scheduled sensor measurements
-    }
+    if (state == current_transmit_state)
+        return;
+
+    humidity_file_set_measure_state(state);
+    push7_state_file_set_measure_state(state);
+    pir_file_set_measure_state(state);
+    light_file_set_measure_state(state);
+    hall_effect_file_set_measure_state(state);
+    button_file_set_measure_state(state);
+
+    current_transmit_state = state;
 }
 
-
-void pir_callback()
+void sensor_manager_set_test_mode(bool enable)
 {
-    // pir_file_t pir_file =
-    // {
-    //     .state = hw_gpio_get_in(PIR_PIN),
-    //     .battery_voltage=get_battery_voltage(),
-    // };
-    // queue_add_file(pir_file.bytes, PIR_FILE_SIZE, PIR_FILE_ID);
-    led_flash_white();
+    if (enable == current_testmode_state)
+        return;
+
+    DPRINT("setting test mode: %d", enable);
+    humidity_file_set_test_mode(enable);
+    push7_state_file_set_test_mode(enable);
+    pir_file_set_test_mode(enable);
+    light_file_set_test_mode(enable);
+    hall_effect_file_set_test_mode(enable);
+    button_file_set_test_mode(enable);
+    current_testmode_state = enable;
 }
 
-static void execute_measurements()
+void sensor_manager_set_sensor_states(uint8_t sensor_enabled_state_array[])
 {
-    float test;
-    uint16_t raw;
-    HDC1080DM_read_temperature(&test);
-    HDC1080DM_read_humidity(&test);
-    // VEML7700_set_shutdown_state(false);
-    VEML7700_read_ALS_Lux(&raw, &test);
-    PYD1598_register_callback(&pir_callback);
-    PYD1598_set_state(true);
+    DPRINT("setting enable states");
+    DPRINT_DATA(sensor_enabled_state_array, 6);
+    humidity_file_set_enabled(sensor_enabled_state_array[HUMIDITY_SENSOR_INDEX]);
+    light_file_set_enabled(sensor_enabled_state_array[LIGHT_SENSOR_INDEX]);
+    pir_file_set_enabled(sensor_enabled_state_array[PIR_SENSOR_INDEX]);
+    hall_effect_file_set_enabled(sensor_enabled_state_array[HALL_EFFECT_SENSOR_INDEX]);
+    button_file_set_enabled(sensor_enabled_state_array[BUTTON_SENSOR_INDEX]);
+
+    DPRINT("SET HUMIDITY %d, LIGHT %d, PIR %d, HALL_EFFECT %d, BUTTON %d",
+        sensor_enabled_state_array[HUMIDITY_SENSOR_INDEX], sensor_enabled_state_array[LIGHT_SENSOR_INDEX],
+        sensor_enabled_state_array[PIR_SENSOR_INDEX], sensor_enabled_state_array[HALL_EFFECT_SENSOR_INDEX],
+        sensor_enabled_state_array[BUTTON_SENSOR_INDEX]);
 }
 
-void sensor_manager_button_pressed(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state)
+void sensor_manager_set_interval(uint32_t interval)
 {
+    humidity_file_set_interval(interval);
+    light_file_set_interval(interval);
+    DPRINT("setting sensor interval %d", interval);
+}
 
-    button_file_t button_file = {
-        .button_id = button_id,
-        .mask = mask,
-        .elapsed_deciseconds = 0,
-        .buttons_state = buttons_state,
-        .battery_voltage = get_battery_voltage(),
-    };
-
-    queue_add_file(button_file.bytes, BUTTON_FILE_SIZE, BUTTON_FILE_ID);
-    DPRINT("Button callback - id: %d, mask: %d, elapsed time: %d, all_button_state %d \n", button_id, mask, 0,
-        buttons_state);
+void sensor_manager_get_sensor_states(uint8_t sensor_enabled_state_array[])
+{
+    sensor_enabled_state_array[HUMIDITY_SENSOR_INDEX] = humidity_file_is_enabled();
+    sensor_enabled_state_array[LIGHT_SENSOR_INDEX] = light_file_is_enabled();
+    sensor_enabled_state_array[PIR_SENSOR_INDEX] = pir_file_is_enabled();
+    sensor_enabled_state_array[HALL_EFFECT_SENSOR_INDEX] = hall_effect_file_is_enabled();
+    sensor_enabled_state_array[BUTTON_SENSOR_INDEX] = button_file_is_enabled();
+    DPRINT("getting enable states");
+    DPRINT_DATA(sensor_enabled_state_array, 6);
+    DPRINT("GET HUMIDITY %d, LIGHT %d, PIR %d, HALL_EFFECT %d, BUTTON %d",
+        sensor_enabled_state_array[HUMIDITY_SENSOR_INDEX], sensor_enabled_state_array[LIGHT_SENSOR_INDEX],
+        sensor_enabled_state_array[PIR_SENSOR_INDEX], sensor_enabled_state_array[HALL_EFFECT_SENSOR_INDEX],
+        sensor_enabled_state_array[BUTTON_SENSOR_INDEX]);
 }

@@ -53,6 +53,7 @@ typedef union {
 
 error_t VEML7700_init(i2c_handle_t* i2c_handle);
 error_t VEML7700_configure(VEML7700_CONFIG_REG reg);
+void VEML7700_change_settings(uint8_t integration_time, uint8_t persistence_number, uint8_t gain, uint8_t power_mode);
 error_t VEML7700_set_power_mode(VEML7700_ALS_POWER_MODE mode);
 error_t VEML7700_read_ALS_Lux(uint16_t* raw_data, float* parsed_data);
 error_t VEML7700_read_White_Lux(uint16_t* raw_data, float* parsed_data);

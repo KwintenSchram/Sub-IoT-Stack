@@ -22,7 +22,6 @@ static void PYD1598_setup_interrupt_mode();
 static void process_interrupt();
 static void reset_direct_link();
 
-
 typedef union {
     uint32_t rawData;
     struct {
@@ -46,22 +45,22 @@ typedef enum {
 
 typedef enum { PIR_BPF = 0, PIR_LPF = 1, reserved_source = 2, Temperature_Sensor = 3 } PYD1598_FILTER_SOURCE_t;
 
-PYD1598_CONFIG_REG default_config =  {
+static PYD1598_CONFIG_REG current_config = {
     .Factory_Params = 0X10,
     .Filter_Source = PIR_BPF,
     .Operation_Mode = WAKE_UP_OPERATION,
     .Window_Time = 1, // 4s
-    .Pulse_Counter = 1, //2 pulses
+    .Pulse_Counter = 1, // 2 pulses
     .Blind_Time = 3, // 2s
     .Threshold = 0X18,
     .reserved1 = 0X00,
 };
 
-GPIO_InitTypeDef output_config = { .Mode = GPIO_MODE_OUTPUT_PP, .Pull = GPIO_NOPULL, .Speed = GPIO_SPEED_FREQ_HIGH };
-GPIO_InitTypeDef input_config
+static GPIO_InitTypeDef output_config
+    = { .Mode = GPIO_MODE_OUTPUT_PP, .Pull = GPIO_NOPULL, .Speed = GPIO_SPEED_FREQ_HIGH };
+static GPIO_InitTypeDef input_config
     = { .Mode = GPIO_MODE_IT_RISING_FALLING, .Pull = GPIO_NOPULL, .Speed = GPIO_SPEED_FREQ_LOW };
 
-static pin_id_t power_supply_pin;
 static pin_id_t direct_link;
 static pin_id_t serial_in;
 static bool current_state = false;
@@ -70,18 +69,12 @@ PYD1598_callback_t PYD1598_cb;
 /*!
  * @brief Sets up the default parameters of the sensor.
  */
-error_t PYD1598_init(pin_id_t data_in, pin_id_t data_out, pin_id_t supply)
+error_t PYD1598_init(pin_id_t data_in, pin_id_t data_out)
 {
-    power_supply_pin = supply;
     direct_link = data_out;
     serial_in = data_in;
     sched_register_task(&process_interrupt);
-
-    hw_gpio_configure_pin_stm(power_supply_pin, &output_config);
     hw_gpio_configure_pin_stm(serial_in, &output_config);
-
-    hw_gpio_clr(power_supply_pin);
-
     current_state = false;
 }
 
@@ -89,19 +82,38 @@ void PYD1598_register_callback(PYD1598_callback_t PYD1598_callback) { PYD1598_cb
 
 static void PYD1598_setup_interrupt_mode()
 {
-    write_register_value(default_config.rawData);
+    write_register_value(current_config.rawData);
     reset_direct_link();
+}
+
+void PYD1598_set_settings(
+    uint8_t filter_Source, uint8_t window_Time, uint8_t pulse_Counter, uint8_t blind_Time, uint8_t threshold)
+{
+    PYD1598_CONFIG_REG new_config = {
+        .Factory_Params = 0X10,
+        .Filter_Source = filter_Source,
+        .Operation_Mode = WAKE_UP_OPERATION,
+        .Window_Time = window_Time,
+        .Pulse_Counter = pulse_Counter,
+        .Blind_Time = blind_Time,
+        .Threshold = threshold,
+        .reserved1 = 0X00,
+    };
+    if (new_config.rawData != current_config.rawData) {
+        current_config.rawData = new_config.rawData;
+        if (current_state) {
+            PYD1598_set_state(false);
+            PYD1598_set_state(true);
+        }
+    }
 }
 
 error_t PYD1598_set_state(bool state)
 {
     if (state && !current_state) {
-        hw_gpio_set(power_supply_pin);
-        hw_busy_wait(1000);
         PYD1598_setup_interrupt_mode();
     } else if (!state && current_state) {
         hw_gpio_disable_interrupt(serial_in);
-        hw_gpio_clr(power_supply_pin);
     }
     return SUCCESS;
 }
@@ -138,21 +150,20 @@ static void reset_direct_link()
     hw_gpio_clr(direct_link);
     hw_busy_wait(500);
     hw_gpio_configure_pin_stm(direct_link, &input_config);
-    hw_gpio_configure_interrupt(direct_link, GPIO_RISING_EDGE, &interrupt_callback, NULL);
+    hw_gpio_configure_interrupt(direct_link, GPIO_RISING_EDGE | GPIO_FALLING_EDGE, &interrupt_callback, NULL);
     hw_gpio_enable_interrupt(direct_link);
 }
 
 static void process_interrupt()
 {
-    log_print_string("processing interrupt");
-    if (hw_gpio_get_in(direct_link)) {
-
+    DPRINT("processing PIR interrupt");
+    bool mask = hw_gpio_get_in(direct_link);
+    if (mask) {
         reset_direct_link();
-
         DPRINT("PYD1598 movement detected");
-        if (PYD1598_cb)
-            PYD1598_cb();
     }
+    if (PYD1598_cb)
+        PYD1598_cb(mask);
 }
 
 static void interrupt_callback(void* arg) { sched_post_task(&process_interrupt); }

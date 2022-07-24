@@ -18,14 +18,12 @@
 
 #include "platform.h"
 
-#include "button.h"
 #include "led.h"
 #include "network_manager.h"
-#include "file_definitions.h"
 #include "little_queue.h"
-#include "adc_stuff.h"
 
-//#define FRAMEWORK_LITTLE_QUEUE_LOG 1
+#define FRAMEWORK_LITTLE_QUEUE_LOG 1
+#define MAX_FILE_SIZE 10
 #define MAX_RETRY_ATTEMPTS 5
 
 #ifdef FRAMEWORK_LITTLE_QUEUE_LOG
@@ -37,7 +35,7 @@
     #define DPRINT_DATA(...)
 #endif
 
-static uint8_t file_fifo_buffer[MAX_QUEUE_ELEMENTS * BUTTON_FILE_SIZE];
+static uint8_t file_fifo_buffer[MAX_QUEUE_ELEMENTS * MAX_FILE_SIZE];
 static uint8_t file_size_and_id_fifo_buffer[MAX_QUEUE_ELEMENTS * 2];
 
 static fifo_t file_fifo;
@@ -58,9 +56,7 @@ static void queue_transmit_completed(bool success)
         fifo_skip(&file_fifo, file_size);
         fifo_skip(&file_size_and_id_fifo, 2);
         retry_counter = 0;
-
-        // readout the battery voltage when done processing
-        update_battery_voltage();
+        
         if(!success)
             log_print_error_string("file %d discarded, to many tries", file_id);
     }
@@ -88,8 +84,9 @@ static void queue_transmit_files()
     fifo_peek(&file_fifo, file_buffer, 0, file_size);
     DPRINT("transmitting file %d, size %d", file_id, file_size);
     ret = transmit_file(file_id, 0, file_size, file_buffer);
+    DPRINT_DATA(file_buffer, file_size);
     if(ret != SUCCESS)
-        log_print_string("could not send button file to network manager");
+        log_print_string("could not send file to network manager");
    
 }
 
@@ -104,7 +101,7 @@ void queue_add_file(uint8_t* file_content, uint8_t file_size, uint8_t file_id)
             ret = fifo_put(&file_size_and_id_fifo, &file_size, 1);
             ret = fifo_put(&file_size_and_id_fifo, &file_id, 1);
         }
-        DPRINT("added button file to the queue.");
+        DPRINT("added file to the queue.");
 
     if(get_network_manager_state() == NETWORK_MANAGER_READY && !timer_is_task_scheduled(&queue_transmit_files))
         sched_post_task(&queue_transmit_files);

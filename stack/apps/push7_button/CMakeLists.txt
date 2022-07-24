@@ -29,9 +29,9 @@ limitations under the License.
 #SET_PROPERTY(CACHE ${APP_PREFIX}_<param_name> PROPERTY STRINGS "value1;value2")
 #
 
-INCLUDE_DIRECTORIES(
-    inc
-)
+INCLUDE_DIRECTORIES(.)
+INCLUDE_DIRECTORIES(inc)
+INCLUDE_DIRECTORIES(filesystem/inc)
 
 IF(${MODULE_LORAWAN})
     SET(libs alp d7ap d7ap_fs lorawan framework)
@@ -39,4 +39,18 @@ ELSE()
     SET(libs alp d7ap d7ap_fs framework)
 ENDIF()
 
-APP_BUILD(NAME ${APP_NAME} SOURCES push7_button.c adc_stuff.c network_manager.c little_queue.c sensor_manager.c LIBS ${libs})
+APP_BUILD(
+    NAME ${APP_NAME} 
+    SOURCES 
+    push7_button.c 
+    adc_stuff.c 
+    network_manager.c 
+    little_queue.c 
+    sensor_manager.c 
+    filesystem/button_file.c 
+    filesystem/hall_effect_file.c 
+    filesystem/humidity_file.c 
+    filesystem/light_file.c 
+    filesystem/pir_file.c 
+    filesystem/push7_state_file.c 
+    LIBS ${libs})

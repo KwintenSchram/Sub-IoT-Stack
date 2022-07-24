@@ -55,27 +55,36 @@ blockdevice_t* const persistent_files_blockdevice = (blockdevice_t* const)&perma
 blockdevice_t* const volatile_blockdevice = (blockdevice_t* const)&ram_bd;
 static i2c_handle_t* i2c;
 
+static GPIO_InitTypeDef output_config
+    = { .Mode = GPIO_MODE_OUTPUT_PP, .Pull = GPIO_NOPULL, .Speed = GPIO_SPEED_FREQ_HIGH };
+
 static void __init_sensors()
 {
     error_t ret1, ret2;
     i2c = i2c_init(0, 0, I2C_BAUDRATE, true);
     i2c_acquire(i2c);
-    ret1 = HDC1080DM_init(i2c);
-    ret2 = VEML7700_init(i2c);
-    // VEML7700_set_shutdown_state(true);
-    PYD1598_init(PIR_IN_PIN, PIR_OUT_PIN, PIR_SUPPLY_PIN);
 
-    GPIO_InitTypeDef supply_pin_config;
-    supply_pin_config.Mode = GPIO_MODE_OUTPUT_PP;
-    supply_pin_config.Pull = GPIO_NOPULL;
-    supply_pin_config.Speed = GPIO_SPEED_FREQ_LOW;
-
-    hw_gpio_configure_pin_stm(HAL_EFFECT_SUPPLY_PIN, &supply_pin_config);
+    hw_gpio_configure_pin_stm(HAL_EFFECT_SUPPLY_PIN, &output_config);
     hw_gpio_clr(HAL_EFFECT_SUPPLY_PIN);
+
+    hw_gpio_configure_pin_stm(PIR_SUPPLY_PIN, &output_config);
+    hw_gpio_clr(PIR_SUPPLY_PIN);
 }
 
+i2c_handle_t* platf_get_i2c_handle()
+{
+    return i2c;
+}
 
-void set_HAL_power_state(bool state)
+void platf_set_PIR_power_state(bool state)
+{
+    if (state)
+        hw_gpio_set(PIR_SUPPLY_PIN);
+    else
+        hw_gpio_clr(PIR_SUPPLY_PIN);
+}
+
+void platf_set_HALL_power_state(bool state)
 {
     if (state)
         hw_gpio_set(HAL_EFFECT_SUPPLY_PIN);
@@ -193,3 +202,4 @@ void hw_radio_io_deinit()
 #endif
     hw_gpio_configure_pin_stm(SX127x_VCC_TXCO, &initStruct);
 }
+       #define ROMBASE 0x1FF00000

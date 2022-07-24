@@ -28,6 +28,7 @@
 #include "blockdevice_ram.h"
 #include "fs.h"
 #include "hwblockdevice.h"
+#include "hwi2c.h"
 
 #ifndef PLATFORM_PUSH7
 #error Mismatch between the configured platform and the actual platform. Expected PUSH7 to be defined
@@ -90,7 +91,8 @@ extern blockdevice_t* const volatile_blockdevice;
 #define PLATFORM_PERMANENT_BLOCKDEVICE persistent_files_blockdevice
 #define PLATFORM_VOLATILE_BLOCKDEVICE volatile_blockdevice
 
-void set_PIR_power_state(bool state);
-void set_HAL_power_state(bool state);
+void platf_set_PIR_power_state(bool state);
+void platf_set_HALL_power_state(bool state);
+i2c_handle_t* platf_get_i2c_handle();
 
 #endif
