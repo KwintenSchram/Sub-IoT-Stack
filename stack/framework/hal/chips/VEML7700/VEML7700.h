@@ -65,8 +65,8 @@ error_t VEML7700_init(i2c_handle_t* i2c_handle);
 error_t VEML7700_configure(VEML7700_CONFIG_REG reg);
 void VEML7700_change_settings(uint8_t integration_time, uint8_t persistence_number, uint8_t gain);
 error_t VEML7700_set_power_mode(VEML7700_ALS_POWER_MODE mode, bool power_saving_mode_enabled);
+error_t VEML7700_read_ALS_Lux(uint16_t* raw_data, float* light_lux);
 error_t VEML7700_read_White_Lux(uint16_t* raw_data);
-error_t VEML7700_read_White_Lux(uint16_t* raw_data, float* parsed_data);
 error_t VEML7700_set_shutdown_state(bool state);
 error_t VEML7700_get_auto_lux(uint32_t* lux);
 
