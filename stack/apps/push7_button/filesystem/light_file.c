@@ -18,11 +18,11 @@
 
 #define LIGHT_FILE_ID 57
 #define LIGHT_FILE_SIZE sizeof(light_file_t)
-#define RAW_LIGHT_FILE_SIZE 8
+#define RAW_LIGHT_FILE_SIZE 4
 
 #define LIGHT_CONFIG_FILE_ID 67
 #define LIGHT_CONFIG_FILE_SIZE sizeof(light_config_file_t)
-#define RAW_LIGHT_CONFIG_FILE_SIZE 9
+#define RAW_LIGHT_CONFIG_FILE_SIZE 8
 
 #define TESTMODE_LIGHT_INTERVAL_SEC 30
 #define DEFAULT_LIGHT_INTERVAL_SEC 60 * 5
