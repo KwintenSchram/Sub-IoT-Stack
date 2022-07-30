@@ -66,19 +66,18 @@ error_t hall_effect_files_initialize()
         = { .file_permissions = (file_permission_t) { .guest_read = true, .user_read = true },
               .file_properties.storage_class = FS_STORAGE_VOLATILE,
               .length = HALL_EFFECT_FILE_SIZE,
-              .allocated_length = HALL_EFFECT_FILE_SIZE + 10};
+              .allocated_length = HALL_EFFECT_FILE_SIZE };
 
     d7ap_fs_file_header_t permanent_file_header = { .file_permissions
         = (file_permission_t) { .guest_read = true, .guest_write = true, .user_read = true, .user_write = true },
         .file_properties.storage_class = FS_STORAGE_PERMANENT,
         .length = HALL_EFFECT_CONFIG_FILE_SIZE,
-        .allocated_length = HALL_EFFECT_CONFIG_FILE_SIZE + 10};
+        .allocated_length = HALL_EFFECT_CONFIG_FILE_SIZE };
 
     hall_effect_config_file_t hall_effect_config_file;
     uint32_t length = HALL_EFFECT_CONFIG_FILE_SIZE;
     error_t ret = d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
-        log_print_string("file didn't exist yet! %d",HALL_EFFECT_CONFIG_FILE_ID );
         ret = d7ap_fs_init_file(
             HALL_EFFECT_CONFIG_FILE_ID, &permanent_file_header, hall_effect_config_file_default.bytes);
         if (ret != SUCCESS) {

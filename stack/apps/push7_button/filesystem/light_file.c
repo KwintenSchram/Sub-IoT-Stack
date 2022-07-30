@@ -31,7 +31,6 @@ typedef struct {
     union {
         uint8_t bytes[RAW_LIGHT_FILE_SIZE];
         struct {
-            uint32_t light_white;
             uint32_t light_als;
         } __attribute__((__packed__));
     };
@@ -45,7 +44,6 @@ typedef struct {
             uint8_t integration_time;
             uint8_t persistence_protect_number;
             uint8_t gain;
-            uint8_t power_mode;
             bool enabled;
         } __attribute__((__packed__));
     };
@@ -56,17 +54,15 @@ static void execute_measurement();
 
 static const light_config_file_t light_config_file_default
     = (light_config_file_t) { .interval = DEFAULT_LIGHT_INTERVAL_SEC,
-          .integration_time = 0,
-          .persistence_protect_number = 0,
-          .gain = 0,
-          .power_mode = 0,
+          .integration_time = ALS_INTEGRATION_100ms,
+          .persistence_protect_number = ALS_PERSISTENCE_1,
+          .gain = ALS_GAIN_x1,
           .enabled = true };
 
 static light_config_file_t light_config_file_cached = (light_config_file_t) { .interval = DEFAULT_LIGHT_INTERVAL_SEC,
-    .integration_time = 0,
-    .persistence_protect_number = 0,
-    .gain = 0,
-    .power_mode = 0,
+    .integration_time = ALS_INTEGRATION_100ms,
+    .persistence_protect_number = ALS_PERSISTENCE_1,
+    .gain = ALS_GAIN_x1,
     .enabled = true };
 
 static bool light_file_transmit_state = false;
@@ -114,9 +110,7 @@ error_t light_files_initialize()
     d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &length, ROOT_AUTH);
     VEML7700_init(platf_get_i2c_handle());
     VEML7700_change_settings(light_config_file_cached.integration_time,
-        light_config_file_cached.persistence_protect_number, light_config_file_cached.gain,
-        light_config_file_cached.power_mode);
-    VEML7700_set_shutdown_state(true);
+        light_config_file_cached.persistence_protect_number, light_config_file_cached.gain);
 }
 
 static void file_modified_callback(uint8_t file_id)
@@ -125,9 +119,7 @@ static void file_modified_callback(uint8_t file_id)
         uint32_t size = LIGHT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &size, ROOT_AUTH);
         VEML7700_change_settings(light_config_file_cached.integration_time,
-            light_config_file_cached.persistence_protect_number, light_config_file_cached.gain,
-            light_config_file_cached.power_mode);
-        VEML7700_set_shutdown_state(!(light_config_file_cached.enabled && light_config_file_transmit_state));
+            light_config_file_cached.persistence_protect_number, light_config_file_cached.gain);
         timer_cancel_task(&execute_measurement);
         if (light_config_file_cached.enabled && light_config_file_transmit_state)
             timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
@@ -145,12 +137,12 @@ static void file_modified_callback(uint8_t file_id)
 
 static void execute_measurement()
 {
-    float parsed_light_als, parsed_light_white;
-    uint16_t raw;
-    VEML7700_read_ALS_Lux(&raw, &parsed_light_als);
-    VEML7700_read_White_Lux(&raw, &parsed_light_white);
-    light_file_t light_file
-        = { .light_white = (uint32_t)round(parsed_light_white), .light_als = (uint32_t)round(parsed_light_als) };
+    float parsed_light_als;
+    uint16_t raw_data = 0;
+    VEML7700_set_shutdown_state(false);
+    VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
+    light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als) };
+    VEML7700_set_shutdown_state(true);
     d7ap_fs_write_file(LIGHT_FILE_ID, 0, light_file.bytes, LIGHT_FILE_SIZE, ROOT_AUTH);
 }
 
@@ -159,7 +151,6 @@ void light_file_set_measure_state(bool enable)
     timer_cancel_task(&execute_measurement);
     light_file_transmit_state = enable;
     light_config_file_transmit_state = enable;
-    VEML7700_set_shutdown_state(!(light_config_file_cached.enabled && light_config_file_transmit_state));
     if (light_config_file_cached.enabled && light_config_file_transmit_state)
         timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
 }
@@ -171,14 +162,12 @@ void light_file_set_test_mode(bool enable)
     test_mode_state == enable;
     timer_cancel_task(&execute_measurement);
     if (enable) {
-        VEML7700_set_shutdown_state(false);
         light_config_file_cached.interval = TESTMODE_LIGHT_INTERVAL_SEC;
         light_config_file_cached.enabled = true;
         timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     } else {
         uint32_t size = LIGHT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &size, ROOT_AUTH);
-        VEML7700_set_shutdown_state(!(light_config_file_cached.enabled && light_config_file_transmit_state));
         if (light_config_file_cached.enabled && light_config_file_transmit_state) {
             timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
         }
