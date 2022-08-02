@@ -49,13 +49,14 @@ typedef struct {
 
 static void file_modified_callback(uint8_t file_id);
 static void pir_interrupt_callback(bool mask);
+static void reset_pir_file();
 
 static const pir_config_file_t pir_config_file_default = (pir_config_file_t) { .transmit_mask_0 = true,
     .transmit_mask_1 = true,
     .filter_source = 0,
     .window_time = 1,
     .pulse_counter = 1,
-    .blind_time = 3,
+    .blind_time = 14,
     .threshold = 0x18,
     .enabled = true };
 static pir_config_file_t pir_config_file_cached = (pir_config_file_t) { .transmit_mask_0 = true,
@@ -63,7 +64,7 @@ static pir_config_file_t pir_config_file_cached = (pir_config_file_t) { .transmi
     .filter_source = 0,
     .window_time = 1,
     .pulse_counter = 1,
-    .blind_time = 3,
+    .blind_time = 14,
     .threshold = 0x18,
     .enabled = true };
 
@@ -107,6 +108,7 @@ error_t pir_files_initialize()
     }
 
     d7ap_fs_register_file_modified_callback(PIR_CONFIG_FILE_ID, &file_modified_callback);
+    d7ap_fs_register_file_modified_callback(PIR_FILE_ID, &file_modified_callback);
     d7ap_fs_read_file(PIR_CONFIG_FILE_ID, 0, pir_config_file_cached.bytes, &length, ROOT_AUTH);
     PYD1598_init(PIR_IN_PIN, PIR_OUT_PIN);
     PYD1598_set_settings(pir_config_file_cached.filter_source, pir_config_file_cached.window_time,
@@ -114,12 +116,17 @@ error_t pir_files_initialize()
     PYD1598_register_callback(&pir_interrupt_callback);
     platf_set_PIR_power_state(false);
     PYD1598_set_state(false);
+    sched_register_task(&reset_pir_file);
 }
+
+static void reset_pir_file() { pir_interrupt_callback(false); } //TODO check if already high instead
 
 static void pir_interrupt_callback(bool mask)
 {
     pir_file_t pir_file = { .mask = mask };
     d7ap_fs_write_file(PIR_FILE_ID, 0, pir_file.bytes, PIR_FILE_SIZE, ROOT_AUTH);
+    if (mask)
+        timer_post_task_delay(&reset_pir_file, (pir_config_file_cached.blind_time/2) * TIMER_TICKS_PER_SEC);
 }
 
 static void file_modified_callback(uint8_t file_id)
