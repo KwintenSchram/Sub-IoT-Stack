@@ -33,7 +33,7 @@ typedef union {
         uint32_t Blind_Time : 4; //[RegisterValue] *0.5s + 0.5s
         uint32_t Threshold : 8; //
         uint32_t reserved1 : 7;
-    };
+    } __attribute__((__packed__));
 } PYD1598_CONFIG_REG;
 
 typedef enum {

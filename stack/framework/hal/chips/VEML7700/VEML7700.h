@@ -29,13 +29,11 @@ typedef enum {
 } VEML7700_ALS_GAIN_t;
 
 typedef enum {
-    ALS_POWER_MODE_1 = 0x0, //600 ms/sample (ALS_INTEGRATION_100ms)
-    ALS_POWER_MODE_2 = 0x1, //1100 ms/sample (ALS_INTEGRATION_100ms)
-    ALS_POWER_MODE_3 = 0x2, //2100 ms/sample (ALS_INTEGRATION_100ms)
-    ALS_POWER_MODE_4 = 0x3 //4100 ms/sample (ALS_INTEGRATION_100ms)
+    ALS_POWER_MODE_1 = 0x0, // 600 ms/sample (ALS_INTEGRATION_100ms)
+    ALS_POWER_MODE_2 = 0x1, // 1100 ms/sample (ALS_INTEGRATION_100ms)
+    ALS_POWER_MODE_3 = 0x2, // 2100 ms/sample (ALS_INTEGRATION_100ms)
+    ALS_POWER_MODE_4 = 0x3 // 4100 ms/sample (ALS_INTEGRATION_100ms)
 } VEML7700_ALS_POWER_MODE;
-
-
 
 typedef union {
     uint16_t rawData;
@@ -48,17 +46,17 @@ typedef union {
         uint16_t reserved2 : 1;
         uint16_t ALS_GAIN : 2; // Gain selection
         uint16_t reserved1 : 3;
-    };
+    } __attribute__((__packed__));
 } VEML7700_CONFIG_REG;
 
 typedef union {
     uint8_t rawData;
     struct {
-        
+
         uint8_t PSM_EN : 1;
         uint8_t PSM : 2;
-        uint8_t reserved : 7;
-    };
+        uint8_t reserved : 5;
+    } __attribute__((__packed__));
 } VEML_POWER_MODE_REG_T;
 
 error_t VEML7700_init(i2c_handle_t* i2c_handle);
