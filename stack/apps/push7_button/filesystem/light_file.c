@@ -52,13 +52,6 @@ typedef struct {
 static void file_modified_callback(uint8_t file_id);
 static void execute_measurement();
 
-static const light_config_file_t light_config_file_default
-    = (light_config_file_t) { .interval = DEFAULT_LIGHT_INTERVAL_SEC,
-          .integration_time = ALS_INTEGRATION_100ms,
-          .persistence_protect_number = ALS_PERSISTENCE_1,
-          .gain = ALS_GAIN_x1,
-          .enabled = true };
-
 static light_config_file_t light_config_file_cached = (light_config_file_t) { .interval = DEFAULT_LIGHT_INTERVAL_SEC,
     .integration_time = ALS_INTEGRATION_100ms,
     .persistence_protect_number = ALS_PERSISTENCE_1,
@@ -82,13 +75,13 @@ error_t light_files_initialize()
         = (file_permission_t) { .guest_read = true, .guest_write = true, .user_read = true, .user_write = true },
         .file_properties.storage_class = FS_STORAGE_PERMANENT,
         .length = LIGHT_CONFIG_FILE_SIZE,
-        .allocated_length = LIGHT_CONFIG_FILE_SIZE };
+        .allocated_length = LIGHT_CONFIG_FILE_SIZE + 10 };
 
     light_config_file_t light_config_file;
     uint32_t length = LIGHT_CONFIG_FILE_SIZE;
     error_t ret = d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
-        ret = d7ap_fs_init_file(LIGHT_CONFIG_FILE_ID, &permanent_file_header, light_config_file_default.bytes);
+        ret = d7ap_fs_init_file(LIGHT_CONFIG_FILE_ID, &permanent_file_header, light_config_file_cached.bytes);
         if (ret != SUCCESS) {
             log_print_error_string("Error initializing light effect configuration file: %d", ret);
             return ret;
@@ -107,7 +100,6 @@ error_t light_files_initialize()
 
     d7ap_fs_register_file_modified_callback(LIGHT_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(LIGHT_FILE_ID, &file_modified_callback);
-    d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &length, ROOT_AUTH);
     VEML7700_init(platf_get_i2c_handle());
     VEML7700_change_settings(light_config_file_cached.integration_time,
         light_config_file_cached.persistence_protect_number, light_config_file_cached.gain);
@@ -120,9 +112,10 @@ static void file_modified_callback(uint8_t file_id)
         d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &size, ROOT_AUTH);
         VEML7700_change_settings(light_config_file_cached.integration_time,
             light_config_file_cached.persistence_protect_number, light_config_file_cached.gain);
-        timer_cancel_task(&execute_measurement);
         if (light_config_file_cached.enabled && light_config_file_transmit_state)
             timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        else
+            timer_cancel_task(&execute_measurement);
 
         if (light_config_file_transmit_state)
             queue_add_file(light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, LIGHT_CONFIG_FILE_ID);

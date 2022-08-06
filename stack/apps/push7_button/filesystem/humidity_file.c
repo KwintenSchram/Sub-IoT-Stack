@@ -49,9 +49,6 @@ typedef struct {
 static void file_modified_callback(uint8_t file_id);
 static void execute_measurement();
 
-static const humidity_config_file_t humidity_config_file_default
-    = (humidity_config_file_t) { .interval = DEFAULT_HUMIDITY_INTERVAL_SEC, .enabled = true };
-
 static humidity_config_file_t humidity_config_file_cached
     = (humidity_config_file_t) { .interval = DEFAULT_HUMIDITY_INTERVAL_SEC, .enabled = true };
 
@@ -71,13 +68,13 @@ error_t humidity_files_initialize()
         = (file_permission_t) { .guest_read = true, .guest_write = true, .user_read = true, .user_write = true },
         .file_properties.storage_class = FS_STORAGE_PERMANENT,
         .length = HUMIDITY_CONFIG_FILE_SIZE,
-        .allocated_length = HUMIDITY_CONFIG_FILE_SIZE };
+        .allocated_length = HUMIDITY_CONFIG_FILE_SIZE + 10 };
 
     humidity_config_file_t humidity_config_file;
     uint32_t length = HUMIDITY_CONFIG_FILE_SIZE;
     error_t ret = d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
-        ret = d7ap_fs_init_file(HUMIDITY_CONFIG_FILE_ID, &permanent_file_header, humidity_config_file_default.bytes);
+        ret = d7ap_fs_init_file(HUMIDITY_CONFIG_FILE_ID, &permanent_file_header, humidity_config_file_cached.bytes);
         if (ret != SUCCESS) {
             log_print_error_string("Error initializing humidity effect configuration file: %d", ret);
             return ret;
@@ -98,7 +95,6 @@ error_t humidity_files_initialize()
 
     d7ap_fs_register_file_modified_callback(HUMIDITY_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(HUMIDITY_FILE_ID, &file_modified_callback);
-    d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file_cached.bytes, &length, ROOT_AUTH);
     sched_register_task(&execute_measurement);
 }
 
@@ -107,10 +103,11 @@ static void file_modified_callback(uint8_t file_id)
     if (file_id == HUMIDITY_CONFIG_FILE_ID) {
         uint32_t size = HUMIDITY_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file_cached.bytes, &size, ROOT_AUTH);
-        if (humidity_config_file_cached.enabled) {
-            timer_cancel_task(&execute_measurement);
+        if (humidity_config_file_cached.enabled && humidity_file_transmit_state) {
             timer_post_task_delay(&execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
-        }
+        } else
+            timer_cancel_task(&execute_measurement);
+
         if (humidity_config_file_transmit_state)
             queue_add_file(humidity_config_file_cached.bytes, HUMIDITY_CONFIG_FILE_SIZE, HUMIDITY_CONFIG_FILE_ID);
     } else if (file_id == HUMIDITY_FILE_ID) {

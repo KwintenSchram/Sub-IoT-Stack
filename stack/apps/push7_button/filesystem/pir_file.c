@@ -51,14 +51,6 @@ static void file_modified_callback(uint8_t file_id);
 static void pir_interrupt_callback(bool mask);
 static void reset_pir_file();
 
-static const pir_config_file_t pir_config_file_default = (pir_config_file_t) { .transmit_mask_0 = true,
-    .transmit_mask_1 = true,
-    .filter_source = 0,
-    .window_time = 1,
-    .pulse_counter = 1,
-    .blind_time = 14,
-    .threshold = 0x18,
-    .enabled = true };
 static pir_config_file_t pir_config_file_cached = (pir_config_file_t) { .transmit_mask_0 = true,
     .transmit_mask_1 = true,
     .filter_source = 0,
@@ -84,13 +76,13 @@ error_t pir_files_initialize()
         = (file_permission_t) { .guest_read = true, .guest_write = true, .user_read = true, .user_write = true },
         .file_properties.storage_class = FS_STORAGE_PERMANENT,
         .length = PIR_CONFIG_FILE_SIZE,
-        .allocated_length = PIR_CONFIG_FILE_SIZE };
+        .allocated_length = PIR_CONFIG_FILE_SIZE + 10 };
 
     pir_config_file_t pir_config_file;
     uint32_t length = PIR_CONFIG_FILE_SIZE;
     error_t ret = d7ap_fs_read_file(PIR_CONFIG_FILE_ID, 0, pir_config_file.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
-        ret = d7ap_fs_init_file(PIR_CONFIG_FILE_ID, &permanent_file_header, pir_config_file_default.bytes);
+        ret = d7ap_fs_init_file(PIR_CONFIG_FILE_ID, &permanent_file_header, pir_config_file_cached.bytes);
         if (ret != SUCCESS) {
             log_print_error_string("Error initializing hall effect configuration file: %d", ret);
             return ret;
@@ -109,7 +101,6 @@ error_t pir_files_initialize()
 
     d7ap_fs_register_file_modified_callback(PIR_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(PIR_FILE_ID, &file_modified_callback);
-    d7ap_fs_read_file(PIR_CONFIG_FILE_ID, 0, pir_config_file_cached.bytes, &length, ROOT_AUTH);
     PYD1598_init(PIR_IN_PIN, PIR_OUT_PIN);
     PYD1598_set_settings(pir_config_file_cached.filter_source, pir_config_file_cached.window_time,
         pir_config_file_cached.pulse_counter, pir_config_file_cached.blind_time, pir_config_file_cached.threshold);
@@ -119,14 +110,14 @@ error_t pir_files_initialize()
     sched_register_task(&reset_pir_file);
 }
 
-static void reset_pir_file() { pir_interrupt_callback(false); } //TODO check if already high instead
+static void reset_pir_file() { pir_interrupt_callback(false); } // TODO check if already high instead
 
 static void pir_interrupt_callback(bool mask)
 {
     pir_file_t pir_file = { .mask = mask };
     d7ap_fs_write_file(PIR_FILE_ID, 0, pir_file.bytes, PIR_FILE_SIZE, ROOT_AUTH);
     if (mask)
-        timer_post_task_delay(&reset_pir_file, (pir_config_file_cached.blind_time/2) * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(&reset_pir_file, (pir_config_file_cached.blind_time / 2) * TIMER_TICKS_PER_SEC);
 }
 
 static void file_modified_callback(uint8_t file_id)

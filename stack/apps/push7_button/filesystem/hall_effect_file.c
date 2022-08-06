@@ -21,7 +21,7 @@
 
 #define HALL_EFFECT_CONFIG_FILE_ID 62
 #define HALL_EFFECT_CONFIG_FILE_SIZE sizeof(hall_effect_config_file_t)
-#define RAW_HALL_EFFECT_CONFIG_FILE_SIZE 2
+#define RAW_HALL_EFFECT_CONFIG_FILE_SIZE 3
 
 typedef struct {
     union {
@@ -47,9 +47,6 @@ static void file_modified_callback(uint8_t file_id);
 static void hall_effect_interrupt_callback(void* arg);
 static void hall_effect_sched_task();
 
-static const hall_effect_config_file_t hall_effect_config_file_default
-    = (hall_effect_config_file_t) { .transmit_mask_0 = true, .transmit_mask_1 = true, .enabled = true };
-
 static hall_effect_config_file_t hall_effect_config_file_cached
     = (hall_effect_config_file_t) { .transmit_mask_0 = true, .transmit_mask_1 = true, .enabled = true };
 
@@ -72,14 +69,14 @@ error_t hall_effect_files_initialize()
         = (file_permission_t) { .guest_read = true, .guest_write = true, .user_read = true, .user_write = true },
         .file_properties.storage_class = FS_STORAGE_PERMANENT,
         .length = HALL_EFFECT_CONFIG_FILE_SIZE,
-        .allocated_length = HALL_EFFECT_CONFIG_FILE_SIZE };
+        .allocated_length = HALL_EFFECT_CONFIG_FILE_SIZE + 10 };
 
     hall_effect_config_file_t hall_effect_config_file;
     uint32_t length = HALL_EFFECT_CONFIG_FILE_SIZE;
     error_t ret = d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(
-            HALL_EFFECT_CONFIG_FILE_ID, &permanent_file_header, hall_effect_config_file_default.bytes);
+            HALL_EFFECT_CONFIG_FILE_ID, &permanent_file_header, hall_effect_config_file_cached.bytes);
         if (ret != SUCCESS) {
             log_print_error_string("Error initializing hall effect configuration file: %d", ret);
             return ret;
@@ -100,7 +97,6 @@ error_t hall_effect_files_initialize()
     d7ap_fs_register_file_modified_callback(HALL_EFFECT_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(HALL_EFFECT_FILE_ID, &file_modified_callback);
 
-    d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file_cached.bytes, &length, ROOT_AUTH);
     platf_set_HALL_power_state(true);
 
     hw_gpio_configure_pin_stm(HAL_EFFECT_PIN, &input_config);
@@ -121,16 +117,14 @@ static void file_modified_callback(uint8_t file_id)
     if (file_id == HALL_EFFECT_CONFIG_FILE_ID && hall_effect_config_file_transmit_state) {
         uint32_t size = HALL_EFFECT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file_cached.bytes, &size, ROOT_AUTH);
-        if (hall_effect_config_file_transmit_state)
-            queue_add_file(
-                hall_effect_config_file_cached.bytes, HALL_EFFECT_CONFIG_FILE_SIZE, HALL_EFFECT_CONFIG_FILE_ID);
+        queue_add_file(hall_effect_config_file_cached.bytes, HALL_EFFECT_CONFIG_FILE_SIZE, HALL_EFFECT_CONFIG_FILE_ID);
     } else if (file_id == HALL_EFFECT_FILE_ID && hall_effect_file_transmit_state) {
         hall_effect_file_t hall_effect_file;
         uint32_t size = HALL_EFFECT_FILE_SIZE;
         d7ap_fs_read_file(HALL_EFFECT_FILE_ID, 0, hall_effect_file.bytes, &size, ROOT_AUTH);
         if ((hall_effect_file.mask == true && hall_effect_config_file_cached.transmit_mask_1)
             || (hall_effect_file.mask == false && hall_effect_config_file_cached.transmit_mask_0))
-            if (hall_effect_file_transmit_state && hall_effect_config_file_cached.enabled)
+            if (hall_effect_config_file_cached.enabled)
                 queue_add_file(hall_effect_file.bytes, HALL_EFFECT_FILE_SIZE, HALL_EFFECT_FILE_ID);
     }
 }

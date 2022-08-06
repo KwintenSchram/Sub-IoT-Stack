@@ -47,9 +47,6 @@ typedef struct {
 static void file_modified_callback(uint8_t file_id);
 static void execute_measurement();
 
-static const push7_state_config_file_t push7_state_config_file_default
-    = (push7_state_config_file_t) { .interval = 5 * 60, .enabled = true };
-
 static push7_state_config_file_t push7_state_config_file_cached
     = (push7_state_config_file_t) { .interval = 5 * 60, .enabled = true };
 
@@ -69,14 +66,14 @@ error_t push7_state_files_initialize()
         = (file_permission_t) { .guest_read = true, .guest_write = true, .user_read = true, .user_write = true },
         .file_properties.storage_class = FS_STORAGE_PERMANENT,
         .length = PUSH7_STATE_CONFIG_FILE_SIZE,
-        .allocated_length = PUSH7_STATE_CONFIG_FILE_SIZE };
+        .allocated_length = PUSH7_STATE_CONFIG_FILE_SIZE + 10 };
 
     push7_state_config_file_t push7_state_config_file;
     uint32_t length = PUSH7_STATE_CONFIG_FILE_SIZE;
     error_t ret = d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(
-            PUSH7_STATE_CONFIG_FILE_ID, &permanent_file_header, push7_state_config_file_default.bytes);
+            PUSH7_STATE_CONFIG_FILE_ID, &permanent_file_header, push7_state_config_file_cached.bytes);
         if (ret != SUCCESS) {
             log_print_error_string("Error initializing push7_state effect configuration file: %d", ret);
             return ret;
@@ -95,8 +92,6 @@ error_t push7_state_files_initialize()
     adc_stuff_init();
     d7ap_fs_register_file_modified_callback(PUSH7_STATE_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(PUSH7_STATE_FILE_ID, &file_modified_callback);
-
-    d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &length, ROOT_AUTH);
     sched_register_task(&execute_measurement);
 }
 
@@ -105,9 +100,10 @@ static void file_modified_callback(uint8_t file_id)
     if (file_id == PUSH7_STATE_CONFIG_FILE_ID) {
         uint32_t size = PUSH7_STATE_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &size, ROOT_AUTH);
-        timer_cancel_task(&execute_measurement);
-        if (push7_state_config_file_cached.enabled)
+        if (push7_state_config_file_cached.enabled && push7_state_file_transmit_state)
             timer_post_task_delay(&execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        else
+            timer_cancel_task(&execute_measurement);
         if (push7_state_config_file_transmit_state)
             queue_add_file(
                 push7_state_config_file_cached.bytes, PUSH7_STATE_CONFIG_FILE_SIZE, PUSH7_STATE_CONFIG_FILE_ID);

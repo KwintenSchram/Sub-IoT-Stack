@@ -48,10 +48,6 @@ typedef struct {
 static void file_modified_callback(uint8_t file_id);
 static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state);
 
-static const button_config_file_t button_config_file_default = (button_config_file_t) {
-    .transmit_mask_0 = true, .transmit_mask_1 = true, .button_control_menu = true, .enabled = true
-};
-
 static button_config_file_t button_config_file_cached = (button_config_file_t) {
     .transmit_mask_0 = true, .transmit_mask_1 = true, .button_control_menu = true, .enabled = true
 };
@@ -84,13 +80,13 @@ error_t button_files_initialize()
         = (file_permission_t) { .guest_read = true, .guest_write = true, .user_read = true, .user_write = true },
         .file_properties.storage_class = FS_STORAGE_PERMANENT,
         .length = BUTTON_CONFIG_FILE_SIZE,
-        .allocated_length = BUTTON_CONFIG_FILE_SIZE };
+        .allocated_length = BUTTON_CONFIG_FILE_SIZE + 10 };
 
     button_config_file_t button_config_file;
     uint32_t length = BUTTON_CONFIG_FILE_SIZE;
     error_t ret = d7ap_fs_read_file(BUTTON_CONFIG_FILE_ID, 0, button_config_file.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
-        ret = d7ap_fs_init_file(BUTTON_CONFIG_FILE_ID, &permanent_file_header, button_config_file_default.bytes);
+        ret = d7ap_fs_init_file(BUTTON_CONFIG_FILE_ID, &permanent_file_header, button_config_file_cached.bytes);
         if (ret != SUCCESS) {
             log_print_error_string("Error initializing button configuration file: %d", ret);
             return ret;
@@ -109,8 +105,6 @@ error_t button_files_initialize()
 
     // d7ap_fs_register_file_modified_callback(BUTTON_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(BUTTON_FILE_ID, &file_modified_callback);
-
-    d7ap_fs_read_file(BUTTON_CONFIG_FILE_ID, 0, button_config_file_cached.bytes, &length, ROOT_AUTH);
     ubutton_register_callback(&userbutton_callback);
 }
 

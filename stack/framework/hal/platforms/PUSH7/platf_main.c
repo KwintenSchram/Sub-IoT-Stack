@@ -71,10 +71,7 @@ static void __init_sensors()
     hw_gpio_clr(PIR_SUPPLY_PIN);
 }
 
-i2c_handle_t* platf_get_i2c_handle()
-{
-    return i2c;
-}
+i2c_handle_t* platf_get_i2c_handle() { return i2c; }
 
 void platf_set_PIR_power_state(bool state)
 {
@@ -202,4 +199,3 @@ void hw_radio_io_deinit()
 #endif
     hw_gpio_configure_pin_stm(SX127x_VCC_TXCO, &initStruct);
 }
-       #define ROMBASE 0x1FF00000

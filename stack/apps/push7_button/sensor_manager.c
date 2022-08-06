@@ -38,7 +38,7 @@
 #include "pir_file.h"
 #include "push7_state_file.h"
 
-#ifdef FRAMEWORK_NETWORK_MANAGER_LOG
+#ifdef FRAMEWORK_SENSOR_MANAGER_LOG
 #define DPRINT(...) log_print_string(__VA_ARGS__)
 #define DPRINT_DATA(...) log_print_data(__VA_ARGS__)
 #else
