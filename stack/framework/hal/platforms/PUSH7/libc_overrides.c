@@ -73,7 +73,7 @@ void __assert_func(const char* file, int line, const char* func, const char* fai
         for (uint32_t j = 0; j < 20; j++) {
             // blink at twice the frequency of the _exit call, so we can identify which of the two events has occurred
             for (uint32_t i = 0; i < 0xFFFFF; i++) { }
-            led_flash_white();
+            start_led_flash(1);
         }
     }
 

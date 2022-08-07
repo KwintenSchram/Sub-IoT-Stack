@@ -23,10 +23,10 @@
 #include "hwleds.h"
 #include "timer.h"
 
-#define FLASH_DURATION TIMER_TICKS_PER_SEC * 0.1
+#define FLASH_ON_DURATION TIMER_TICKS_PER_SEC * 0.1
+#define FLASH_OFF_DURATION TIMER_TICKS_PER_SEC * 0.2
 
 bool led_init(void);
-
-void led_flash_white(void);
+void start_led_flash(uint8_t flash_times);
 
 #endif

@@ -134,7 +134,7 @@ static void execute_measurement()
     uint16_t raw_data = 0;
     VEML7700_set_shutdown_state(false);
     VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
-    light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als) };
+    light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als * 1000) };
     VEML7700_set_shutdown_state(true);
     d7ap_fs_write_file(LIGHT_FILE_ID, 0, light_file.bytes, LIGHT_FILE_SIZE, ROOT_AUTH);
 }

@@ -45,8 +45,8 @@
  * USERBUTTON DEFINITIONS *
  *************************/
 
-#define BUTTON1_PIN PIN(1, 2)
-#define BUTTON2_PIN PIN(1, 5)
+#define BUTTON1_PIN PIN(1, 5)
+#define BUTTON2_PIN PIN(1, 2)
 #define BUTTON3_PIN PIN(1, 6)
 
 #define PIR_OUT_PIN PIN(0, 3)
