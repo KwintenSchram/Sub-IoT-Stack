@@ -99,7 +99,7 @@ void sensor_manager_set_sensor_states(uint8_t sensor_enabled_state_array[])
     pir_file_set_enabled(sensor_enabled_state_array[PIR_SENSOR_INDEX]);
     hall_effect_file_set_enabled(sensor_enabled_state_array[HALL_EFFECT_SENSOR_INDEX]);
     button_file_set_enabled(sensor_enabled_state_array[BUTTON_SENSOR_INDEX]);
-    little_queue_toggle_led_state(sensor_enabled_state_array[QUEUE_LIGHT_STATE]);
+    push7_flash_set_led_enabled(sensor_enabled_state_array[QUEUE_LIGHT_STATE]);
 
     DPRINT("SET HUMIDITY %d, LIGHT %d, PIR %d, HALL_EFFECT %d, BUTTON %d, QUEUE LED %d",
         sensor_enabled_state_array[HUMIDITY_SENSOR_INDEX], sensor_enabled_state_array[LIGHT_SENSOR_INDEX],
@@ -121,7 +121,7 @@ void sensor_manager_get_sensor_states(uint8_t sensor_enabled_state_array[])
     sensor_enabled_state_array[PIR_SENSOR_INDEX] = pir_file_is_enabled();
     sensor_enabled_state_array[HALL_EFFECT_SENSOR_INDEX] = hall_effect_file_is_enabled();
     sensor_enabled_state_array[BUTTON_SENSOR_INDEX] = button_file_is_enabled();
-    sensor_enabled_state_array[QUEUE_LIGHT_STATE] = little_queue_get_toggle_led_state();
+    sensor_enabled_state_array[QUEUE_LIGHT_STATE] = push7_flash_is_led_enabled();
     DPRINT("getting enable states");
     DPRINT_DATA(sensor_enabled_state_array, 6);
     DPRINT("GET HUMIDITY %d, LIGHT %d, PIR %d, HALL_EFFECT %d, BUTTON %d, QUEUE LED %d",

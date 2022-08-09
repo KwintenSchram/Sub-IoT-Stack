@@ -15,7 +15,6 @@ typedef enum {
 
 void little_queue_init();
 void queue_add_file(uint8_t* file_content, uint8_t file_size, uint8_t file_id);
-void little_queue_toggle_led_state(bool state);
-bool little_queue_get_toggle_led_state();
+void little_queue_set_led_state(bool state);
 
 #endif //__LITTLE_QUEUE_H

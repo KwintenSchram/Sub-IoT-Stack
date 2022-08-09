@@ -71,9 +71,8 @@ error_t hall_effect_files_initialize()
         .length = HALL_EFFECT_CONFIG_FILE_SIZE,
         .allocated_length = HALL_EFFECT_CONFIG_FILE_SIZE + 10 };
 
-    hall_effect_config_file_t hall_effect_config_file;
     uint32_t length = HALL_EFFECT_CONFIG_FILE_SIZE;
-    error_t ret = d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file.bytes, &length, ROOT_AUTH);
+    error_t ret = d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file_cached.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(
             HALL_EFFECT_CONFIG_FILE_ID, &permanent_file_header, hall_effect_config_file_cached.bytes);

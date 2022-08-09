@@ -48,7 +48,14 @@
 
 #define STATE_COUNTER_EVENT_SEC TIMER_TICKS_PER_SEC * 1
 
-typedef enum { BOOTED_STATE, OPERATIONAL_STATE, CONFIGURATION_STATE, TEST_STATE, TRANSPORT_STATE } APP_STATE_t;
+typedef enum {
+    BOOTED_STATE,
+    OPERATIONAL_STATE,
+    SENSOR_CONFIGURATION_STATE,
+    TEST_STATE,
+    TRANSPORT_STATE,
+    INTERVAL_CONFIGURATION_STATE
+} APP_STATE_t;
 
 typedef enum {
     BUTTON1_EVENT = 0,
@@ -78,6 +85,7 @@ static config_state_t current_config_menu_state = CONFIG_STATE_OFF;
 static buttons_state_t booted_button_state;
 static bool initial_button_press_released = false;
 static uint8_t sensor_enabled_state_array[ALL_BUTTONS_PRESSED];
+static uint32_t new_sensor_interval = 0;
 
 static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state)
 {
@@ -113,41 +121,56 @@ static void switch_state(APP_STATE_t new_state)
     current_app_state = new_state;
     sensor_manager_set_transmit_state(new_state == OPERATIONAL_STATE || new_state == TEST_STATE);
     sensor_manager_set_test_mode(new_state == TEST_STATE);
-    if (new_state == CONFIGURATION_STATE) {
+    if (new_state == SENSOR_CONFIGURATION_STATE) {
         sensor_manager_get_sensor_states(sensor_enabled_state_array);
     }
 }
 
-static void display_state(bool state)
-{
-    if (state)
-        start_led_flash(1);
-    else {
-        start_led_flash(2);
-    }
-}
+static void display_state(bool state) { start_led_flash(state ? 1 : 2); }
 
 static void operational_input_event_handler(input_type_t i, bool mask) { }
 
-static void configuration_input_event_handler(input_type_t i, bool mask)
+static void sensor_configuration_input_event_handler(input_type_t i, bool mask)
 {
+    if (i == STATE_COUNTER_EVENT || i == HALL_EFFECT_EVENT)
+        return;
     if (current_buttons_state == NO_BUTTON_PRESSED) {
         if (max_buttons_state == NO_BUTTON_PRESSED)
             return;
-        if (max_buttons_state != prev_max_buttons_state) {
-            DPRINT("showing the state of %d", max_buttons_state);
-            display_state(sensor_enabled_state_array[max_buttons_state]);
-
-        } else {
+        if (max_buttons_state == prev_max_buttons_state) {
             sensor_enabled_state_array[max_buttons_state] = !sensor_enabled_state_array[max_buttons_state];
             sensor_manager_set_sensor_states(sensor_enabled_state_array);
-            display_state(sensor_enabled_state_array[max_buttons_state]);
             DPRINT("setting the state of %d to %d", max_buttons_state, sensor_enabled_state_array[max_buttons_state]);
         }
+        display_state(sensor_enabled_state_array[max_buttons_state]);
         prev_max_buttons_state = max_buttons_state;
         max_buttons_state = NO_BUTTON_PRESSED;
     } else if (current_buttons_state > max_buttons_state)
         max_buttons_state = current_buttons_state;
+}
+
+static void interval_configuration_input_event_handler(input_type_t i, bool mask)
+{
+    if (current_buttons_state != NO_BUTTON_PRESSED || mask == true) {
+        return;
+    }
+
+    switch (i) {
+    case BUTTON1_EVENT:
+        new_sensor_interval += 30;
+        sensor_manager_set_interval(new_sensor_interval);
+        break;
+
+    case BUTTON2_EVENT:
+        new_sensor_interval += 600;
+        sensor_manager_set_interval(new_sensor_interval);
+        break;
+
+    case BUTTON3_EVENT:
+        new_sensor_interval += (2 * 60 * 60);
+        sensor_manager_set_interval(new_sensor_interval);
+        break;
+    }
 }
 
 static void app_state_input_event_handler(input_type_t i, bool mask)
@@ -162,8 +185,11 @@ static void app_state_input_event_handler(input_type_t i, bool mask)
     case OPERATIONAL_STATE:
         operational_input_event_handler(i, mask);
         break;
-    case CONFIGURATION_STATE:
-        configuration_input_event_handler(i, mask);
+    case SENSOR_CONFIGURATION_STATE:
+        sensor_configuration_input_event_handler(i, mask);
+        break;
+    case INTERVAL_CONFIGURATION_STATE:
+        interval_configuration_input_event_handler(i, mask);
         break;
     default:
         break;
@@ -180,10 +206,12 @@ void bootstrap()
 
     if (booted_button_state == NO_BUTTON_PRESSED) {
         switch_state(OPERATIONAL_STATE);
-    } else if (booted_button_state == BUTTON2_PRESSED) {
+    } else if (booted_button_state == BUTTON2_3_PRESSED) {
         switch_state(TEST_STATE);
     } else if (booted_button_state == BUTTON1_PRESSED) {
-        switch_state(CONFIGURATION_STATE);
+        switch_state(SENSOR_CONFIGURATION_STATE);
+    } else if (booted_button_state == BUTTON2_PRESSED) {
+        switch_state(INTERVAL_CONFIGURATION_STATE);
     } else if (booted_button_state == BUTTON3_PRESSED) {
         switch_state(TRANSPORT_STATE);
     }

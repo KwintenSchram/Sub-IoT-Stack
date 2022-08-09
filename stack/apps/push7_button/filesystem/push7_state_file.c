@@ -19,7 +19,7 @@
 
 #define PUSH7_STATE_CONFIG_FILE_ID 66
 #define PUSH7_STATE_CONFIG_FILE_SIZE sizeof(push7_state_config_file_t)
-#define RAW_PUSH7_STATE_CONFIG_FILE_SIZE 5
+#define RAW_PUSH7_STATE_CONFIG_FILE_SIZE 6
 
 #define TESTMODE_STATE_INTERVAL_SEC 30
 
@@ -39,6 +39,7 @@ typedef struct {
         uint8_t bytes[RAW_PUSH7_STATE_CONFIG_FILE_SIZE];
         struct {
             uint32_t interval;
+            bool led_flash_state;
             bool enabled;
         } __attribute__((__packed__));
     };
@@ -48,7 +49,7 @@ static void file_modified_callback(uint8_t file_id);
 static void execute_measurement();
 
 static push7_state_config_file_t push7_state_config_file_cached
-    = (push7_state_config_file_t) { .interval = 5 * 60, .enabled = true };
+    = (push7_state_config_file_t) { .interval = 5 * 60, .led_flash_state = true, .enabled = true };
 
 static bool push7_state_file_transmit_state = false;
 static bool push7_state_config_file_transmit_state = false;
@@ -68,9 +69,8 @@ error_t push7_state_files_initialize()
         .length = PUSH7_STATE_CONFIG_FILE_SIZE,
         .allocated_length = PUSH7_STATE_CONFIG_FILE_SIZE + 10 };
 
-    push7_state_config_file_t push7_state_config_file;
     uint32_t length = PUSH7_STATE_CONFIG_FILE_SIZE;
-    error_t ret = d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file.bytes, &length, ROOT_AUTH);
+    error_t ret = d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(
             PUSH7_STATE_CONFIG_FILE_ID, &permanent_file_header, push7_state_config_file_cached.bytes);
@@ -90,6 +90,7 @@ error_t push7_state_files_initialize()
         log_print_error_string("Error initializing push7_state effect file: %d", ret);
     }
     adc_stuff_init();
+    little_queue_set_led_state(push7_state_config_file_cached.led_flash_state);
     d7ap_fs_register_file_modified_callback(PUSH7_STATE_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(PUSH7_STATE_FILE_ID, &file_modified_callback);
     sched_register_task(&execute_measurement);
@@ -104,6 +105,7 @@ static void file_modified_callback(uint8_t file_id)
             timer_post_task_delay(&execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
         else
             timer_cancel_task(&execute_measurement);
+        little_queue_set_led_state(push7_state_config_file_cached.led_flash_state);
         if (push7_state_config_file_transmit_state)
             queue_add_file(
                 push7_state_config_file_cached.bytes, PUSH7_STATE_CONFIG_FILE_SIZE, PUSH7_STATE_CONFIG_FILE_ID);
@@ -152,6 +154,17 @@ void push7_state_file_set_test_mode(bool enable)
 }
 
 bool push7_state_file_is_enabled() { return push7_state_config_file_cached.enabled; }
+
+bool push7_flash_is_led_enabled() { return push7_state_config_file_cached.led_flash_state; }
+
+void push7_flash_set_led_enabled(bool state)
+{
+    if (push7_state_config_file_cached.led_flash_state != state) {
+        push7_state_config_file_cached.led_flash_state = state;
+        d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_SIZE, 0, push7_state_config_file_cached.bytes,
+            PUSH7_STATE_CONFIG_FILE_SIZE, ROOT_AUTH);
+    }
+}
 
 void push7_state_file_set_enabled(bool enable)
 {

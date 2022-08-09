@@ -78,9 +78,8 @@ error_t pir_files_initialize()
         .length = PIR_CONFIG_FILE_SIZE,
         .allocated_length = PIR_CONFIG_FILE_SIZE + 10 };
 
-    pir_config_file_t pir_config_file;
     uint32_t length = PIR_CONFIG_FILE_SIZE;
-    error_t ret = d7ap_fs_read_file(PIR_CONFIG_FILE_ID, 0, pir_config_file.bytes, &length, ROOT_AUTH);
+    error_t ret = d7ap_fs_read_file(PIR_CONFIG_FILE_ID, 0, pir_config_file_cached.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(PIR_CONFIG_FILE_ID, &permanent_file_header, pir_config_file_cached.bytes);
         if (ret != SUCCESS) {

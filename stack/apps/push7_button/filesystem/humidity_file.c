@@ -70,9 +70,8 @@ error_t humidity_files_initialize()
         .length = HUMIDITY_CONFIG_FILE_SIZE,
         .allocated_length = HUMIDITY_CONFIG_FILE_SIZE + 10 };
 
-    humidity_config_file_t humidity_config_file;
     uint32_t length = HUMIDITY_CONFIG_FILE_SIZE;
-    error_t ret = d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file.bytes, &length, ROOT_AUTH);
+    error_t ret = d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file_cached.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(HUMIDITY_CONFIG_FILE_ID, &permanent_file_header, humidity_config_file_cached.bytes);
         if (ret != SUCCESS) {

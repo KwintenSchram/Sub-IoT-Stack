@@ -41,7 +41,7 @@ static uint8_t file_size_and_id_fifo_buffer[MAX_QUEUE_ELEMENTS * 2];
 static fifo_t file_fifo;
 static fifo_t file_size_and_id_fifo;
 static uint8_t retry_counter = 0;
-static bool toggle_led = true;
+static bool flash_led_enabled = true;
 
 static uint8_t transmitted_file_id = 0;
 static void queue_transmit_files();
@@ -65,7 +65,7 @@ static void queue_transmit_completed(bool success)
     // TODO add backoff if !success based on #transmits
     if (fifo_get_size(&file_fifo) > 0)
         timer_post_task_delay(&queue_transmit_files, 50);
-    else if (toggle_led)
+    else if (flash_led_enabled)
         start_led_flash(1);
 }
 
@@ -112,6 +112,4 @@ void little_queue_init()
     fifo_init(&file_size_and_id_fifo, file_size_and_id_fifo_buffer, sizeof(file_size_and_id_fifo_buffer));
 }
 
-void little_queue_toggle_led_state(bool state) { toggle_led = state; }
-
-bool little_queue_get_toggle_led_state() { return toggle_led; }
+void little_queue_set_led_state(bool state) { flash_led_enabled = state; }

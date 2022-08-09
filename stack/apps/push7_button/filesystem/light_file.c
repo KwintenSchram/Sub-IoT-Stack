@@ -77,9 +77,8 @@ error_t light_files_initialize()
         .length = LIGHT_CONFIG_FILE_SIZE,
         .allocated_length = LIGHT_CONFIG_FILE_SIZE + 10 };
 
-    light_config_file_t light_config_file;
     uint32_t length = LIGHT_CONFIG_FILE_SIZE;
-    error_t ret = d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file.bytes, &length, ROOT_AUTH);
+    error_t ret = d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(LIGHT_CONFIG_FILE_ID, &permanent_file_header, light_config_file_cached.bytes);
         if (ret != SUCCESS) {

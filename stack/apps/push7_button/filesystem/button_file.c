@@ -82,9 +82,8 @@ error_t button_files_initialize()
         .length = BUTTON_CONFIG_FILE_SIZE,
         .allocated_length = BUTTON_CONFIG_FILE_SIZE + 10 };
 
-    button_config_file_t button_config_file;
     uint32_t length = BUTTON_CONFIG_FILE_SIZE;
-    error_t ret = d7ap_fs_read_file(BUTTON_CONFIG_FILE_ID, 0, button_config_file.bytes, &length, ROOT_AUTH);
+    error_t ret = d7ap_fs_read_file(BUTTON_CONFIG_FILE_ID, 0, button_config_file_cached.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(BUTTON_CONFIG_FILE_ID, &permanent_file_header, button_config_file_cached.bytes);
         if (ret != SUCCESS) {
@@ -103,7 +102,7 @@ error_t button_files_initialize()
         log_print_error_string("Error initializing button file: %d", ret);
     }
 
-    // d7ap_fs_register_file_modified_callback(BUTTON_CONFIG_FILE_ID, &file_modified_callback);
+    d7ap_fs_register_file_modified_callback(BUTTON_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(BUTTON_FILE_ID, &file_modified_callback);
     ubutton_register_callback(&userbutton_callback);
 }
