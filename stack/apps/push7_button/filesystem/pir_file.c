@@ -20,7 +20,7 @@
 
 #define PIR_CONFIG_FILE_ID 68
 #define PIR_CONFIG_FILE_SIZE sizeof(pir_config_file_t)
-#define RAW_PIR_CONFIG_FILE_SIZE 8
+#define RAW_PIR_CONFIG_FILE_SIZE 9
 
 typedef struct {
     union {
@@ -40,7 +40,7 @@ typedef struct {
             uint8_t filter_source; // PYD1598_FILTER_SOURCE_t
             uint8_t window_time; // Window time = [RegisterValue] * 2s + 2s
             uint8_t pulse_counter; // Amount of pulses = [RegisterValue] + 1
-            uint8_t blind_time; //[RegisterValue] *0.5s + 0.5s
+            uint16_t blind_time; // seconds
             uint8_t threshold;
             bool enabled;
         } __attribute__((__packed__));
@@ -49,7 +49,6 @@ typedef struct {
 
 static void file_modified_callback(uint8_t file_id);
 static void pir_interrupt_callback(bool mask);
-static void reset_pir_file();
 
 static pir_config_file_t pir_config_file_cached = (pir_config_file_t) { .transmit_mask_0 = true,
     .transmit_mask_1 = true,
@@ -106,17 +105,12 @@ error_t pir_files_initialize()
     PYD1598_register_callback(&pir_interrupt_callback);
     platf_set_PIR_power_state(false);
     PYD1598_set_state(false);
-    sched_register_task(&reset_pir_file);
 }
-
-static void reset_pir_file() { pir_interrupt_callback(false); } // TODO check if already high instead
 
 static void pir_interrupt_callback(bool mask)
 {
     pir_file_t pir_file = { .mask = mask };
     d7ap_fs_write_file(PIR_FILE_ID, 0, pir_file.bytes, PIR_FILE_SIZE, ROOT_AUTH);
-    if (mask)
-        timer_post_task_delay(&reset_pir_file, (pir_config_file_cached.blind_time / 2) * TIMER_TICKS_PER_SEC);
 }
 
 static void file_modified_callback(uint8_t file_id)

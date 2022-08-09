@@ -45,13 +45,14 @@ typedef enum {
 
 typedef enum { PIR_BPF = 0, PIR_LPF = 1, reserved_source = 2, Temperature_Sensor = 3 } PYD1598_FILTER_SOURCE_t;
 
+static uint16_t sensor_blind_time = 0;
 static PYD1598_CONFIG_REG current_config = {
     .Factory_Params = 0X10,
     .Filter_Source = PIR_BPF,
     .Operation_Mode = WAKE_UP_OPERATION,
     .Window_Time = 1, // 4s
     .Pulse_Counter = 1, // 2 pulses
-    .Blind_Time = 3, // 2s
+    .Blind_Time = 0, // 0.5s
     .Threshold = 0X18,
     .reserved1 = 0X00,
 };
@@ -74,6 +75,7 @@ error_t PYD1598_init(pin_id_t data_in, pin_id_t data_out)
     direct_link = data_out;
     serial_in = data_in;
     sched_register_task(&process_interrupt);
+    sched_register_task(&reset_direct_link);
     hw_gpio_configure_pin_stm(serial_in, &output_config);
     current_state = false;
 }
@@ -87,7 +89,7 @@ static void PYD1598_setup_interrupt_mode()
 }
 
 void PYD1598_set_settings(
-    uint8_t filter_Source, uint8_t window_Time, uint8_t pulse_Counter, uint8_t blind_Time, uint8_t threshold)
+    uint8_t filter_Source, uint8_t window_Time, uint8_t pulse_Counter, uint16_t blind_Time, uint8_t threshold)
 {
     PYD1598_CONFIG_REG new_config = {
         .Factory_Params = 0X10,
@@ -95,10 +97,11 @@ void PYD1598_set_settings(
         .Operation_Mode = WAKE_UP_OPERATION,
         .Window_Time = window_Time,
         .Pulse_Counter = pulse_Counter,
-        .Blind_Time = blind_Time,
+        .Blind_Time = 0,
         .Threshold = threshold,
         .reserved1 = 0X00,
     };
+    sensor_blind_time = blind_Time;
     if (new_config.rawData != current_config.rawData) {
         current_config.rawData = new_config.rawData;
         if (current_state) {
@@ -145,6 +148,8 @@ static void write_register_value(unsigned long regval)
 
 static void reset_direct_link()
 {
+    if (PYD1598_cb)
+        PYD1598_cb(false);
     hw_gpio_disable_interrupt(direct_link);
     hw_gpio_configure_pin_stm(direct_link, &output_config);
     hw_gpio_clr(direct_link);
@@ -159,11 +164,11 @@ static void process_interrupt()
     DPRINT("processing PIR interrupt");
     bool mask = hw_gpio_get_in(direct_link);
     if (mask) {
-        reset_direct_link();
+        if (PYD1598_cb)
+            PYD1598_cb(true);
+        timer_post_task_delay(&reset_direct_link, sensor_blind_time * TIMER_TICKS_PER_SEC);
         DPRINT("PYD1598 movement detected");
     }
-    if (PYD1598_cb)
-        PYD1598_cb(mask);
 }
 
 static void interrupt_callback(void* arg) { sched_post_task(&process_interrupt); }
