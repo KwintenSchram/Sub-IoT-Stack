@@ -72,7 +72,8 @@ error_t hall_effect_files_initialize()
         .allocated_length = HALL_EFFECT_CONFIG_FILE_SIZE + 10 };
 
     uint32_t length = HALL_EFFECT_CONFIG_FILE_SIZE;
-    error_t ret = d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file_cached.bytes, &length, ROOT_AUTH);
+    error_t ret
+        = d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file_cached.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(
             HALL_EFFECT_CONFIG_FILE_ID, &permanent_file_header, hall_effect_config_file_cached.bytes);
@@ -116,7 +117,9 @@ static void file_modified_callback(uint8_t file_id)
     if (file_id == HALL_EFFECT_CONFIG_FILE_ID && hall_effect_config_file_transmit_state) {
         uint32_t size = HALL_EFFECT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file_cached.bytes, &size, ROOT_AUTH);
-        queue_add_file(hall_effect_config_file_cached.bytes, HALL_EFFECT_CONFIG_FILE_SIZE, HALL_EFFECT_CONFIG_FILE_ID);
+        if (hall_effect_config_file_transmit_state)
+            queue_add_file(
+                hall_effect_config_file_cached.bytes, HALL_EFFECT_CONFIG_FILE_SIZE, HALL_EFFECT_CONFIG_FILE_ID);
     } else if (file_id == HALL_EFFECT_FILE_ID && hall_effect_file_transmit_state) {
         hall_effect_file_t hall_effect_file;
         uint32_t size = HALL_EFFECT_FILE_SIZE;
@@ -126,6 +129,13 @@ static void file_modified_callback(uint8_t file_id)
             if (hall_effect_config_file_cached.enabled)
                 queue_add_file(hall_effect_file.bytes, HALL_EFFECT_FILE_SIZE, HALL_EFFECT_FILE_ID);
     }
+}
+
+void hall_effect_file_transmit_config_file()
+{
+    uint32_t size = HALL_EFFECT_CONFIG_FILE_SIZE;
+    d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file_cached.bytes, &size, ROOT_AUTH);
+    queue_add_file(hall_effect_config_file_cached.bytes, HALL_EFFECT_CONFIG_FILE_SIZE, HALL_EFFECT_CONFIG_FILE_ID);
 }
 
 void hall_effect_file_set_measure_state(bool enable)

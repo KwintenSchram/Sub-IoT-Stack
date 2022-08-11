@@ -47,7 +47,6 @@ typedef struct {
 } humidity_config_file_t;
 
 static void file_modified_callback(uint8_t file_id);
-static void execute_measurement();
 
 static humidity_config_file_t humidity_config_file_cached
     = (humidity_config_file_t) { .interval = DEFAULT_HUMIDITY_INTERVAL_SEC, .enabled = true };
@@ -94,7 +93,7 @@ error_t humidity_files_initialize()
 
     d7ap_fs_register_file_modified_callback(HUMIDITY_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(HUMIDITY_FILE_ID, &file_modified_callback);
-    sched_register_task(&execute_measurement);
+    sched_register_task(&humidity_file_execute_measurement);
 }
 
 static void file_modified_callback(uint8_t file_id)
@@ -103,9 +102,9 @@ static void file_modified_callback(uint8_t file_id)
         uint32_t size = HUMIDITY_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file_cached.bytes, &size, ROOT_AUTH);
         if (humidity_config_file_cached.enabled && humidity_file_transmit_state) {
-            timer_post_task_delay(&execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+            timer_post_task_delay(&humidity_file_execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
         } else
-            timer_cancel_task(&execute_measurement);
+            timer_cancel_task(&humidity_file_execute_measurement);
 
         if (humidity_config_file_transmit_state)
             queue_add_file(humidity_config_file_cached.bytes, HUMIDITY_CONFIG_FILE_SIZE, HUMIDITY_CONFIG_FILE_ID);
@@ -114,11 +113,18 @@ static void file_modified_callback(uint8_t file_id)
         uint32_t size = HUMIDITY_FILE_SIZE;
         d7ap_fs_read_file(HUMIDITY_FILE_ID, 0, humidity_file.bytes, &size, ROOT_AUTH);
         queue_add_file(humidity_file.bytes, HUMIDITY_FILE_SIZE, HUMIDITY_FILE_ID);
-        timer_post_task_delay(&execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(&humidity_file_execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     }
 }
 
-static void execute_measurement()
+void humidity_file_transmit_config_file()
+{
+    uint32_t size = HUMIDITY_CONFIG_FILE_SIZE;
+    d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file_cached.bytes, &size, ROOT_AUTH);
+    queue_add_file(humidity_config_file_cached.bytes, HUMIDITY_CONFIG_FILE_SIZE, HUMIDITY_CONFIG_FILE_ID);
+}
+
+void humidity_file_execute_measurement()
 {
     float parsed_temperature, parsed_humidity;
     HDC1080DM_read_temperature(&parsed_temperature);
@@ -131,12 +137,12 @@ static void execute_measurement()
 
 void humidity_file_set_measure_state(bool enable)
 {
-    timer_cancel_task(&execute_measurement);
+    timer_cancel_task(&humidity_file_execute_measurement);
     humidity_file_transmit_state = enable;
     humidity_config_file_transmit_state = enable;
 
     if (humidity_config_file_cached.enabled && humidity_file_transmit_state)
-        timer_post_task_delay(&execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(&humidity_file_execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
 }
 
 void humidity_file_set_test_mode(bool enable)
@@ -144,16 +150,16 @@ void humidity_file_set_test_mode(bool enable)
     if (test_mode_state == enable)
         return;
     test_mode_state == enable;
-    timer_cancel_task(&execute_measurement);
+    timer_cancel_task(&humidity_file_execute_measurement);
     if (enable) {
         humidity_config_file_cached.interval = TESTMODE_HUMID_INTERVAL_SEC;
         humidity_config_file_cached.enabled = true;
-        timer_post_task_delay(&execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(&humidity_file_execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     } else {
         uint32_t size = HUMIDITY_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file_cached.bytes, &size, ROOT_AUTH);
         if (humidity_config_file_cached.enabled && humidity_config_file_transmit_state)
-            timer_post_task_delay(&execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+            timer_post_task_delay(&humidity_file_execute_measurement, humidity_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     }
 }
 

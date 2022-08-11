@@ -50,7 +50,6 @@ typedef struct {
 } light_config_file_t;
 
 static void file_modified_callback(uint8_t file_id);
-static void execute_measurement();
 
 static light_config_file_t light_config_file_cached = (light_config_file_t) { .interval = DEFAULT_LIGHT_INTERVAL_SEC,
     .integration_time = ALS_INTEGRATION_100ms,
@@ -64,7 +63,7 @@ static bool test_mode_state = false;
 
 error_t light_files_initialize()
 {
-    sched_register_task(&execute_measurement);
+    sched_register_task(&light_file_execute_measurement);
     d7ap_fs_file_header_t volatile_file_header
         = { .file_permissions = (file_permission_t) { .guest_read = true, .user_read = true },
               .file_properties.storage_class = FS_STORAGE_VOLATILE,
@@ -112,9 +111,9 @@ static void file_modified_callback(uint8_t file_id)
         VEML7700_change_settings(light_config_file_cached.integration_time,
             light_config_file_cached.persistence_protect_number, light_config_file_cached.gain);
         if (light_config_file_cached.enabled && light_config_file_transmit_state)
-            timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+            timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
         else
-            timer_cancel_task(&execute_measurement);
+            timer_cancel_task(&light_file_execute_measurement);
 
         if (light_config_file_transmit_state)
             queue_add_file(light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, LIGHT_CONFIG_FILE_ID);
@@ -123,11 +122,18 @@ static void file_modified_callback(uint8_t file_id)
         uint32_t size = LIGHT_FILE_SIZE;
         d7ap_fs_read_file(LIGHT_FILE_ID, 0, light_file.bytes, &size, ROOT_AUTH);
         queue_add_file(light_file.bytes, LIGHT_FILE_SIZE, LIGHT_FILE_ID);
-        timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     }
 }
 
-static void execute_measurement()
+void light_file_transmit_config_file()
+{
+    uint32_t size = LIGHT_CONFIG_FILE_SIZE;
+    d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &size, ROOT_AUTH);
+    queue_add_file(light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, LIGHT_CONFIG_FILE_ID);
+}
+
+void light_file_execute_measurement()
 {
     float parsed_light_als;
     uint16_t raw_data = 0;
@@ -140,11 +146,11 @@ static void execute_measurement()
 
 void light_file_set_measure_state(bool enable)
 {
-    timer_cancel_task(&execute_measurement);
+    timer_cancel_task(&light_file_execute_measurement);
     light_file_transmit_state = enable;
     light_config_file_transmit_state = enable;
     if (light_config_file_cached.enabled && light_config_file_transmit_state)
-        timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
 }
 
 void light_file_set_test_mode(bool enable)
@@ -152,16 +158,16 @@ void light_file_set_test_mode(bool enable)
     if (test_mode_state == enable)
         return;
     test_mode_state == enable;
-    timer_cancel_task(&execute_measurement);
+    timer_cancel_task(&light_file_execute_measurement);
     if (enable) {
         light_config_file_cached.interval = TESTMODE_LIGHT_INTERVAL_SEC;
         light_config_file_cached.enabled = true;
-        timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     } else {
         uint32_t size = LIGHT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &size, ROOT_AUTH);
         if (light_config_file_cached.enabled && light_config_file_transmit_state) {
-            timer_post_task_delay(&execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+            timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
         }
     }
 }

@@ -46,7 +46,7 @@ typedef struct {
 } button_config_file_t;
 
 static void file_modified_callback(uint8_t file_id);
-static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state);
+static void userbutton_callback(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state);
 
 static button_config_file_t button_config_file_cached = (button_config_file_t) {
     .transmit_mask_0 = true, .transmit_mask_1 = true, .button_control_menu = true, .enabled = true
@@ -56,15 +56,11 @@ static bool button_file_transmit_state = false;
 static bool button_config_file_transmit_state = false;
 static bool test_mode_state = false;
 
-static void userbutton_callback(button_id_t button_id1, uint8_t mask1, buttons_state_t buttons_state1)
+static void userbutton_callback(uint8_t button_id1, uint8_t mask1, buttons_state_t buttons_state1)
 {
-
     if (low_level_event_cb)
         low_level_event_cb(button_id1, mask1, buttons_state1);
-    button_file_t button_file; //= { .button_id = button_id, .mask = mask, .buttons_state = buttons_state };
-    button_file.button_id = button_id1;
-    button_file.mask = mask1;
-    button_file.buttons_state = buttons_state1;
+    button_file_t button_file = { .button_id = button_id1, .mask = mask1, .buttons_state = buttons_state1 };
     error_t ret = d7ap_fs_write_file(BUTTON_FILE_ID, 0, button_file.bytes, BUTTON_FILE_SIZE, ROOT_AUTH);
 }
 
@@ -124,6 +120,13 @@ static void file_modified_callback(uint8_t file_id)
             if (button_file_transmit_state && button_config_file_cached.enabled)
                 queue_add_file(button_file.bytes, BUTTON_FILE_SIZE, BUTTON_FILE_ID);
     }
+}
+
+void button_file_transmit_config_file()
+{
+    uint32_t size = BUTTON_CONFIG_FILE_SIZE;
+    d7ap_fs_read_file(BUTTON_CONFIG_FILE_ID, 0, button_config_file_cached.bytes, &size, ROOT_AUTH);
+    queue_add_file(button_config_file_cached.bytes, BUTTON_CONFIG_FILE_SIZE, BUTTON_CONFIG_FILE_ID);
 }
 
 void button_file_register_cb(ubutton_callback_t callback) { low_level_event_cb = callback; }

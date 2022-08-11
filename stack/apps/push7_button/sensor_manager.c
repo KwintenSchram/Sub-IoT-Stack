@@ -129,3 +129,22 @@ void sensor_manager_get_sensor_states(uint8_t sensor_enabled_state_array[])
         sensor_enabled_state_array[PIR_SENSOR_INDEX], sensor_enabled_state_array[HALL_EFFECT_SENSOR_INDEX],
         sensor_enabled_state_array[BUTTON_SENSOR_INDEX], sensor_enabled_state_array[QUEUE_LIGHT_STATE]);
 }
+
+void sensor_manager_measure_sensor(uint8_t sensor)
+{
+    if (sensor == 0)
+        humidity_file_execute_measurement();
+    else if (sensor == 1)
+        light_file_execute_measurement();
+    else if (sensor == 2)
+        push7_state_file_execute_measurement();
+}
+
+void sensor_manager_send_config_files()
+{
+    push7_state_file_execute_measurement();
+    humidity_file_transmit_config_file();
+    light_file_transmit_config_file();
+    pir_file_transmit_config_file();
+    hall_effect_file_transmit_config_file();
+}

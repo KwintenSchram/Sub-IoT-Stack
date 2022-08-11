@@ -46,7 +46,6 @@ typedef struct {
 } push7_state_config_file_t;
 
 static void file_modified_callback(uint8_t file_id);
-static void execute_measurement();
 
 static push7_state_config_file_t push7_state_config_file_cached
     = (push7_state_config_file_t) { .interval = 5 * 60, .led_flash_state = true, .enabled = true };
@@ -70,7 +69,8 @@ error_t push7_state_files_initialize()
         .allocated_length = PUSH7_STATE_CONFIG_FILE_SIZE + 10 };
 
     uint32_t length = PUSH7_STATE_CONFIG_FILE_SIZE;
-    error_t ret = d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &length, ROOT_AUTH);
+    error_t ret
+        = d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &length, ROOT_AUTH);
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(
             PUSH7_STATE_CONFIG_FILE_ID, &permanent_file_header, push7_state_config_file_cached.bytes);
@@ -93,7 +93,7 @@ error_t push7_state_files_initialize()
     little_queue_set_led_state(push7_state_config_file_cached.led_flash_state);
     d7ap_fs_register_file_modified_callback(PUSH7_STATE_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(PUSH7_STATE_FILE_ID, &file_modified_callback);
-    sched_register_task(&execute_measurement);
+    sched_register_task(&push7_state_file_execute_measurement);
 }
 
 static void file_modified_callback(uint8_t file_id)
@@ -102,9 +102,10 @@ static void file_modified_callback(uint8_t file_id)
         uint32_t size = PUSH7_STATE_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &size, ROOT_AUTH);
         if (push7_state_config_file_cached.enabled && push7_state_file_transmit_state)
-            timer_post_task_delay(&execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+            timer_post_task_delay(
+                &push7_state_file_execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
         else
-            timer_cancel_task(&execute_measurement);
+            timer_cancel_task(&push7_state_file_execute_measurement);
         little_queue_set_led_state(push7_state_config_file_cached.led_flash_state);
         if (push7_state_config_file_transmit_state)
             queue_add_file(
@@ -114,11 +115,19 @@ static void file_modified_callback(uint8_t file_id)
         uint32_t size = PUSH7_STATE_FILE_SIZE;
         d7ap_fs_read_file(PUSH7_STATE_FILE_ID, 0, push7_state_file.bytes, &size, ROOT_AUTH);
         queue_add_file(push7_state_file.bytes, PUSH7_STATE_FILE_SIZE, PUSH7_STATE_FILE_ID);
-        timer_post_task_delay(&execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(
+            &push7_state_file_execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     }
 }
 
-static void execute_measurement()
+void push7_state_file_transmit_config_file()
+{
+    uint32_t size = PUSH7_STATE_CONFIG_FILE_SIZE;
+    d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &size, ROOT_AUTH);
+    queue_add_file(push7_state_config_file_cached.bytes, PUSH7_STATE_CONFIG_FILE_SIZE, PUSH7_STATE_CONFIG_FILE_ID);
+}
+
+void push7_state_file_execute_measurement()
 {
     update_battery_voltage();
     uint16_t voltage = get_battery_voltage();
@@ -128,11 +137,12 @@ static void execute_measurement()
 
 void push7_state_file_set_measure_state(bool enable)
 {
-    timer_cancel_task(&execute_measurement);
+    timer_cancel_task(&push7_state_file_execute_measurement);
     push7_state_file_transmit_state = enable;
     push7_state_config_file_transmit_state = enable;
     if (push7_state_config_file_cached.enabled && push7_state_file_transmit_state)
-        timer_post_task_delay(&execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(
+            &push7_state_file_execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
 }
 
 void push7_state_file_set_test_mode(bool enable)
@@ -140,16 +150,18 @@ void push7_state_file_set_test_mode(bool enable)
     if (test_mode_state == enable)
         return;
     test_mode_state == enable;
-    timer_cancel_task(&execute_measurement);
+    timer_cancel_task(&push7_state_file_execute_measurement);
     if (enable) {
         push7_state_config_file_cached.interval = TESTMODE_STATE_INTERVAL_SEC;
         push7_state_config_file_cached.enabled = true;
-        timer_post_task_delay(&execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+        timer_post_task_delay(
+            &push7_state_file_execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     } else {
         uint32_t size = PUSH7_STATE_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &size, ROOT_AUTH);
         if (push7_state_config_file_cached.enabled && push7_state_config_file_transmit_state)
-            timer_post_task_delay(&execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+            timer_post_task_delay(
+                &push7_state_file_execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     }
 }
 

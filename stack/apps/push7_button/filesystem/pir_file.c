@@ -82,11 +82,11 @@ error_t pir_files_initialize()
     if (ret == -ENOENT) {
         ret = d7ap_fs_init_file(PIR_CONFIG_FILE_ID, &permanent_file_header, pir_config_file_cached.bytes);
         if (ret != SUCCESS) {
-            log_print_error_string("Error initializing hall effect configuration file: %d", ret);
+            log_print_error_string("Error initializing pir configuration file: %d", ret);
             return ret;
         }
     } else if (ret != SUCCESS)
-        log_print_error_string("Error reading hall effect configuration file: %d", ret);
+        log_print_error_string("Error reading pir configuration file: %d", ret);
 
     pir_file_t pir_file = {
         0,
@@ -134,6 +134,13 @@ static void file_modified_callback(uint8_t file_id)
     }
 }
 
+void pir_file_transmit_config_file()
+{
+    uint32_t size = PIR_CONFIG_FILE_SIZE;
+    d7ap_fs_read_file(PIR_CONFIG_FILE_ID, 0, pir_config_file_cached.bytes, &size, ROOT_AUTH);
+    queue_add_file(pir_config_file_cached.bytes, PIR_CONFIG_FILE_SIZE, PIR_CONFIG_FILE_ID);
+}
+
 /**
  * @brief This function allows us to disable the measurement state of the sensor.
  *
@@ -178,6 +185,6 @@ void pir_file_set_enabled(bool enable)
 {
     if (pir_config_file_cached.enabled != enable) {
         pir_config_file_cached.enabled = enable;
-        d7ap_fs_write_file(PIR_CONFIG_FILE_ID, 0, pir_config_file_cached.bytes, PIR_CONFIG_FILE_ID, ROOT_AUTH);
+        d7ap_fs_write_file(PIR_CONFIG_FILE_ID, 0, pir_config_file_cached.bytes, RAW_PIR_CONFIG_FILE_SIZE, ROOT_AUTH);
     }
 }

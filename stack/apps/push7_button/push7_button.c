@@ -72,7 +72,7 @@ typedef enum {
 } config_state_t;
 
 static void app_state_input_event_handler(input_type_t i, bool mask);
-static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state);
+static void userbutton_callback(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state);
 static APP_STATE_t current_app_state = BOOTED_STATE;
 static buttons_state_t current_buttons_state = NO_BUTTON_PRESSED;
 static buttons_state_t previous_buttons_state = NO_BUTTON_PRESSED;
@@ -87,7 +87,7 @@ static bool initial_button_press_released = false;
 static uint8_t sensor_enabled_state_array[ALL_BUTTONS_PRESSED];
 static uint32_t new_sensor_interval = 0;
 
-static void userbutton_callback(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state)
+static void userbutton_callback(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state)
 {
     current_buttons_state = buttons_state;
     app_state_input_event_handler(button_id, mask);
@@ -120,7 +120,6 @@ static void switch_state(APP_STATE_t new_state)
     DPRINT("entering a new state: %d", new_state);
     current_app_state = new_state;
     sensor_manager_set_transmit_state(new_state == OPERATIONAL_STATE || new_state == TEST_STATE);
-    sensor_manager_set_test_mode(new_state == TEST_STATE);
     if (new_state == SENSOR_CONFIGURATION_STATE) {
         sensor_manager_get_sensor_states(sensor_enabled_state_array);
     }
@@ -134,13 +133,16 @@ static void sensor_configuration_input_event_handler(input_type_t i, bool mask)
 {
     if (i == STATE_COUNTER_EVENT || i == HALL_EFFECT_EVENT)
         return;
+
     if (current_buttons_state == NO_BUTTON_PRESSED) {
         if (max_buttons_state == NO_BUTTON_PRESSED)
             return;
+
         if (max_buttons_state == prev_max_buttons_state) {
             sensor_enabled_state_array[max_buttons_state] = !sensor_enabled_state_array[max_buttons_state];
             sensor_manager_set_sensor_states(sensor_enabled_state_array);
-            DPRINT("setting the state of %d to %d", max_buttons_state, sensor_enabled_state_array[max_buttons_state]);
+            DPRINT(
+                "setting the state of %d to %d \n", max_buttons_state, sensor_enabled_state_array[max_buttons_state]);
         }
         display_state(sensor_enabled_state_array[max_buttons_state]);
         prev_max_buttons_state = max_buttons_state;
@@ -173,14 +175,16 @@ static void interval_configuration_input_event_handler(input_type_t i, bool mask
     }
 }
 
+static void test_state_input_event_handler(input_type_t i, bool mask)
+{
+    if (current_buttons_state != NO_BUTTON_PRESSED || mask == true) {
+        return;
+    }
+    sensor_manager_measure_sensor(i);
+}
+
 static void app_state_input_event_handler(input_type_t i, bool mask)
 {
-    // if (!initial_button_press_released) {
-    //     if (current_buttons_state == NO_BUTTON_PRESSED)
-    //         initial_button_press_released = true;
-    //     return;
-    // }
-
     switch (current_app_state) {
     case OPERATIONAL_STATE:
         operational_input_event_handler(i, mask);
@@ -191,6 +195,8 @@ static void app_state_input_event_handler(input_type_t i, bool mask)
     case INTERVAL_CONFIGURATION_STATE:
         interval_configuration_input_event_handler(i, mask);
         break;
+    case TEST_STATE:
+        test_state_input_event_handler(i, mask);
     default:
         break;
     }

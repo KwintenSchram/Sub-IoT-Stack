@@ -9,6 +9,7 @@ void hall_effect_file_set_measure_state(bool enable);
 void hall_effect_file_set_test_mode(bool enable);
 bool hall_effect_file_is_enabled();
 void hall_effect_file_set_enabled(bool enable);
+void hall_effect_file_transmit_config_file();
 
 
 #endif

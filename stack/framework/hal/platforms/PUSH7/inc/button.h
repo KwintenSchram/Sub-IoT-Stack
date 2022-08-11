@@ -54,7 +54,7 @@ typedef uint32_t button_id_t;
  *
  * \param button_id		The id of the button that was pressed
  * **/
-typedef void (*ubutton_callback_t)(button_id_t button_id, uint8_t mask, buttons_state_t buttons_state);
+typedef void (*ubutton_callback_t)(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state);
 
 /* \brief Check whether a button is currently pressed or not.
  *

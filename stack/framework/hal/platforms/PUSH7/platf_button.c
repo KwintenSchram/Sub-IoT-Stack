@@ -44,6 +44,7 @@ button_info_t buttons[PLATFORM_NUM_BUTTONS];
 static void button_callback(void* arg);
 static void button_task();
 static uint8_t booted_button_state = 0;
+static void validate_state();
 
 __LINK_C void __ubutton_init()
 {
@@ -62,11 +63,26 @@ __LINK_C void __ubutton_init()
         assert(err == SUCCESS);
     }
     // gather all button states
-    for (uint8_t i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
-    {
-        booted_button_state += hw_gpio_get_in(buttons[i].button_id) << i;
-    }
+        for (uint8_t i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
+        {
+            bool button_state = hw_gpio_get_in(buttons[i].button_id);
+            booted_button_state += button_state << i;
+            buttons[i].last_known_state = button_state;
+        }
+    
     sched_register_task(&button_task);
+    sched_register_task(&validate_state);
+    sched_post_task(&validate_state);
+}
+
+static void validate_state()
+{
+    for (uint8_t i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
+        {
+            bool button_state = hw_gpio_get_in(buttons[i].button_id);
+            buttons[i].last_known_state = button_state;
+            buttons[i].triggered = button_state;
+        }
 }
 
 __LINK_C error_t ubutton_register_callback(ubutton_callback_t desired_callback)
@@ -120,7 +136,10 @@ static void button_task()
 
 			//ensure we don't repeat the same action
             if (buttons[i].last_known_state == previous_state) 
+            {
+                sched_post_task(&button_task);
                 return;
+            }
 
 
 			// gather all button states
