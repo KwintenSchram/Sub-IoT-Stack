@@ -98,7 +98,6 @@ void queue_add_file(uint8_t* file_content, uint8_t file_size, uint8_t file_id)
         ret = fifo_put(&file_size_and_id_fifo, &file_size, 1);
         ret = fifo_put(&file_size_and_id_fifo, &file_id, 1);
     }
-    DPRINT("added file to the queue.");
 
     if (get_network_manager_state() == NETWORK_MANAGER_READY && !timer_is_task_scheduled(&queue_transmit_files))
         sched_post_task(&queue_transmit_files);

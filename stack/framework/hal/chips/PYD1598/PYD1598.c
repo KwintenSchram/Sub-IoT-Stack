@@ -65,6 +65,7 @@ static GPIO_InitTypeDef input_config
 static pin_id_t direct_link;
 static pin_id_t serial_in;
 static bool current_state = false;
+static bool booted_state = false;
 PYD1598_callback_t PYD1598_cb;
 
 /*!
@@ -114,6 +115,7 @@ void PYD1598_set_settings(
 error_t PYD1598_set_state(bool state)
 {
     if (state && !current_state) {
+        booted_state = false; // ignore first interrupt
         PYD1598_setup_interrupt_mode();
     } else if (!state && current_state) {
         hw_gpio_disable_interrupt(serial_in);
@@ -148,19 +150,23 @@ static void write_register_value(unsigned long regval)
 
 static void reset_direct_link()
 {
-    if (PYD1598_cb)
+    if (PYD1598_cb && booted_state)
         PYD1598_cb(false);
     hw_gpio_disable_interrupt(direct_link);
     hw_gpio_configure_pin_stm(direct_link, &output_config);
     hw_gpio_clr(direct_link);
     hw_busy_wait(500);
     hw_gpio_configure_pin_stm(direct_link, &input_config);
-    hw_gpio_configure_interrupt(direct_link, GPIO_RISING_EDGE | GPIO_FALLING_EDGE, &interrupt_callback, NULL);
+    hw_gpio_configure_interrupt(direct_link, GPIO_RISING_EDGE, &interrupt_callback, NULL);
     hw_gpio_enable_interrupt(direct_link);
 }
 
 static void process_interrupt()
 {
+    if (!booted_state) {
+        reset_direct_link();
+        booted_state = true;
+    }
     DPRINT("processing PIR interrupt");
     bool mask = hw_gpio_get_in(direct_link);
     if (mask) {

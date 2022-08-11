@@ -7,7 +7,7 @@
 #include "math.h"
 #include <stdio.h>
 
-#ifdef true
+#ifdef false
 #define DPRINT(...) log_print_string(__VA_ARGS__)
 #define DPRINT_DATA(...) log_print_data(__VA_ARGS__)
 #else
