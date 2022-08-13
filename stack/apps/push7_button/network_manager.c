@@ -139,7 +139,7 @@ void network_manager_init(last_transmit_completed_callback last_transmit_complet
     transmit_completed_cb = last_transmit_completed_cb;
     sched_register_task(&network_timeout);
 
-    if (USE_PUSH7_CHANNEL_SETTINGS) {
+    if (USE_PUSH7_CHANNEL_SETTINGS) { //TODO check why this doesn't work
         dae_access_profile_t push7_access_profile;
         d7ap_fs_read_access_class(0, &push7_access_profile);
 
