@@ -117,9 +117,7 @@ static void file_modified_callback(uint8_t file_id)
     if (file_id == HALL_EFFECT_CONFIG_FILE_ID && hall_effect_config_file_transmit_state) {
         uint32_t size = HALL_EFFECT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(HALL_EFFECT_CONFIG_FILE_ID, 0, hall_effect_config_file_cached.bytes, &size, ROOT_AUTH);
-        if (hall_effect_config_file_transmit_state)
-            queue_add_file(
-                hall_effect_config_file_cached.bytes, HALL_EFFECT_CONFIG_FILE_SIZE, HALL_EFFECT_CONFIG_FILE_ID);
+        queue_add_file(hall_effect_config_file_cached.bytes, HALL_EFFECT_CONFIG_FILE_SIZE, HALL_EFFECT_CONFIG_FILE_ID);
     } else if (file_id == HALL_EFFECT_FILE_ID && hall_effect_file_transmit_state) {
         hall_effect_file_t hall_effect_file;
         uint32_t size = HALL_EFFECT_FILE_SIZE;

@@ -27,6 +27,6 @@
 #define FLASH_OFF_DURATION TIMER_TICKS_PER_SEC * 0.2
 
 bool led_init(void);
-void start_led_flash(uint8_t flash_times);
+void led_flash(uint8_t flash_times);
 
 #endif

@@ -66,7 +66,7 @@ static void queue_transmit_completed(bool success)
     if (fifo_get_size(&file_fifo) > 0)
         timer_post_task_delay(&queue_transmit_files, 50);
     else if (flash_led_enabled)
-        start_led_flash(1);
+        led_flash(1);
 }
 
 static void queue_transmit_files()

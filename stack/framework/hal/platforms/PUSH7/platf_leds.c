@@ -44,7 +44,7 @@ static bool flashing = false;
 static uint8_t remaining_flashes = 0;
 
 static void end_flash_white();
-static void led_flash();
+static void __led_on_sched_off();
 
 void __led_init()
 {
@@ -56,7 +56,7 @@ void __led_init()
     }
 }
 
-static void led_flash()
+static void __led_on_sched_off()
 {
     led_on(LED_WHITE);
     timer_post_task_delay(&end_flash_white, FLASH_ON_DURATION);
@@ -69,7 +69,7 @@ static void end_flash_white()
         flashing = false;
     else {
         remaining_flashes--;
-        timer_post_task_delay(&led_flash, FLASH_OFF_DURATION);
+        timer_post_task_delay(&__led_on_sched_off, FLASH_OFF_DURATION);
     }
 }
 
@@ -77,7 +77,7 @@ bool led_init()
 {
     __led_init();
     sched_register_task(&end_flash_white);
-    sched_register_task(&led_flash);
+    sched_register_task(&__led_on_sched_off);
     return true;
 }
 
@@ -99,10 +99,10 @@ void led_toggle(unsigned char led_nr)
         hw_gpio_toggle(leds[led_nr]);
 }
 
-void start_led_flash(uint8_t flash_times)
+void led_flash(uint8_t flash_times)
 {
     if (flashing)
         return;
     remaining_flashes = flash_times - 1;
-    led_flash();
+    __led_on_sched_off();
 }

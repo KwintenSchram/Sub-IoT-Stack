@@ -125,7 +125,7 @@ static void switch_state(APP_STATE_t new_state)
     }
 }
 
-static void display_state(bool state) { start_led_flash(state ? 1 : 2); }
+static void display_state(bool state) { led_flash(state ? 1 : 2); }
 
 static void operational_input_event_handler(input_type_t i, bool mask) { }
 
@@ -161,16 +161,19 @@ static void interval_configuration_input_event_handler(input_type_t i, bool mask
     case BUTTON1_EVENT:
         new_sensor_interval += 30;
         sensor_manager_set_interval(new_sensor_interval);
+        led_flash(1);
         break;
 
     case BUTTON2_EVENT:
         new_sensor_interval += 600;
         sensor_manager_set_interval(new_sensor_interval);
+        led_flash(2);
         break;
 
     case BUTTON3_EVENT:
         new_sensor_interval += (2 * 60 * 60);
         sensor_manager_set_interval(new_sensor_interval);
+        led_flash(3);
         break;
     }
 }
@@ -210,18 +213,25 @@ void bootstrap()
     booted_button_state = button_get_booted_state();
     sensor_manager_init();
 
-    if (booted_button_state == NO_BUTTON_PRESSED) {
+    switch (booted_button_state) {
+    case NO_BUTTON_PRESSED:
         switch_state(OPERATIONAL_STATE);
-    } else if (booted_button_state == BUTTON2_3_PRESSED) {
-        switch_state(TEST_STATE);
-    } else if (booted_button_state == BUTTON1_PRESSED) {
+        break;
+    case BUTTON1_PRESSED:
         switch_state(SENSOR_CONFIGURATION_STATE);
-    } else if (booted_button_state == BUTTON2_PRESSED) {
+        break;
+    case BUTTON2_PRESSED:
         switch_state(INTERVAL_CONFIGURATION_STATE);
-    } else if (booted_button_state == BUTTON3_PRESSED) {
+        break;
+    case BUTTON3_PRESSED:
         switch_state(TRANSPORT_STATE);
+        break;
+    case BUTTON2_3_PRESSED:
+        switch_state(TEST_STATE);
+        break;
     }
+
     initial_button_press_released = (booted_button_state == NO_BUTTON_PRESSED);
-    start_led_flash(current_app_state);
+    led_flash(current_app_state);
     log_print_string("Device booted %d\n", booted_button_state);
 }
