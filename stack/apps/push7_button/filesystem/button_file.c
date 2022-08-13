@@ -27,7 +27,7 @@ typedef struct {
         uint8_t bytes[RAW_BUTTON_FILE_SIZE];
         struct {
             uint8_t button_id;
-            uint8_t mask;
+            bool mask;
             uint8_t buttons_state;
         } __attribute__((__packed__));
     };

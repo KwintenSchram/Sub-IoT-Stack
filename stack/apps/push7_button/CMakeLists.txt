@@ -53,4 +53,5 @@ APP_BUILD(
     filesystem/light_file.c 
     filesystem/pir_file.c 
     filesystem/push7_state_file.c 
+    filesystem/state_machine_file.c 
     LIBS ${libs})

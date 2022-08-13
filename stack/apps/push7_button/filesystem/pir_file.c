@@ -26,7 +26,7 @@ typedef struct {
     union {
         uint8_t bytes[RAW_PIR_FILE_SIZE];
         struct {
-            uint8_t mask;
+            bool mask;
         } __attribute__((__packed__));
     };
 } pir_file_t;

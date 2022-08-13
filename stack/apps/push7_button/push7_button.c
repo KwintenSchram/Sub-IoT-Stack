@@ -33,6 +33,7 @@
 #include "log.h"
 #include "scheduler.h"
 #include "sensor_manager.h"
+#include "state_machine_file.h"
 #include "stm32_common_gpio.h"
 #include "timer.h"
 
@@ -74,6 +75,7 @@ typedef enum {
 static void app_state_input_event_handler(input_type_t i, bool mask);
 static void userbutton_callback(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state);
 static APP_STATE_t current_app_state = BOOTED_STATE;
+static APP_STATE_t previous_app_state = BOOTED_STATE;
 static buttons_state_t current_buttons_state = NO_BUTTON_PRESSED;
 static buttons_state_t previous_buttons_state = NO_BUTTON_PRESSED;
 static buttons_state_t max_buttons_state = NO_BUTTON_PRESSED;
@@ -123,6 +125,11 @@ static void switch_state(APP_STATE_t new_state)
     if (new_state == SENSOR_CONFIGURATION_STATE) {
         sensor_manager_get_sensor_states(sensor_enabled_state_array);
     }
+    previous_app_state = state_machine_file_switch_state(current_app_state);
+    if (previous_app_state == INTERVAL_CONFIGURATION_STATE || previous_app_state == SENSOR_CONFIGURATION_STATE)
+        sensor_manager_send_config_files();
+    else if (previous_app_state == TRANSPORT_STATE)
+        sensor_manager_send_config_files();
 }
 
 static void display_state(bool state) { led_flash(state ? 1 : 2); }
@@ -207,6 +214,7 @@ static void app_state_input_event_handler(input_type_t i, bool mask)
 
 void bootstrap()
 {
+    state_machine_file_initialize();
     little_queue_init();
     sched_register_task(&state_counter_event);
     button_file_register_cb(&userbutton_callback);
@@ -233,5 +241,6 @@ void bootstrap()
 
     initial_button_press_released = (booted_button_state == NO_BUTTON_PRESSED);
     led_flash(current_app_state);
+
     log_print_string("Device booted %d\n", booted_button_state);
 }
