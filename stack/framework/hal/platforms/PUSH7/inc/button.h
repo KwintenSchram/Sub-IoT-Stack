@@ -48,13 +48,13 @@ typedef enum {
 
 /* \brief The identifiers for the buttons
  */
-typedef uint8_t button_id_t;
+typedef uint32_t button_id_t;
 
 /* \brief The callback function for when a button is pressed
  *
  * \param button_id		The id of the button that was pressed
  * **/
-typedef void (*ubutton_callback_t)(button_id_t button_id, uint8_t mask, uint8_t elapsed_seconds, buttons_state_t buttons_state);
+typedef void (*ubutton_callback_t)(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state);
 
 /* \brief Check whether a button is currently pressed or not.
  *
@@ -94,5 +94,7 @@ __LINK_C error_t ubutton_deregister_callback();
 
 // not a user function
 void __ubutton_init();
+
+buttons_state_t button_get_booted_state();
 
 #endif
