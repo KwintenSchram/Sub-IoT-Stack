@@ -76,6 +76,7 @@ static light_config_file_t light_config_file_cached = (light_config_file_t) { .i
 static bool light_file_transmit_state = false;
 static bool light_config_file_transmit_state = false;
 static bool test_mode_state = false;
+static bool reset_trigger_required = false;
 
 error_t light_files_initialize()
 {
@@ -161,12 +162,14 @@ static void check_interrupt_state()
     float parsed_light_als;
     uint16_t raw_data = 0;
     VEML7700_get_interrupt_state(&high_triggered, &low_triggered);
-    if (high_triggered || low_triggered) {
+    if (high_triggered || low_triggered || reset_trigger_required) {
         VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
         light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als * 1000),
             .light_als_raw = raw_data,
             .threshold_high_triggered = high_triggered,
             .threshold_low_triggered = low_triggered };
+        d7ap_fs_write_file(LIGHT_FILE_ID, 0, light_file.bytes, LIGHT_FILE_SIZE, ROOT_AUTH);
+        reset_trigger_required = high_triggered || low_triggered;
     }
     timer_post_task_delay(
         &check_interrupt_state, light_config_file_cached.interrupt_check_interval * TIMER_TICKS_PER_SEC);
