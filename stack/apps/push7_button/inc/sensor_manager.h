@@ -15,6 +15,11 @@ typedef enum {
     QUEUE_LIGHT_STATE = BUTTON2_3_PRESSED
 } SENSOR_ARRAY_INDEXES;
 
+typedef enum {
+    LIGHT_THRESHOLD_HIGH,
+    LIGHT_THRESHOLD_LOW,
+} light_threshold_type_t;
+
 void sensor_manager_init();
 void sensor_manager_set_transmit_state(bool state);
 void sensor_manager_set_test_mode(bool enable);
@@ -23,5 +28,8 @@ void sensor_manager_get_sensor_states(uint8_t sensor_enabled_state_array[]);
 void sensor_manager_set_interval(uint32_t interval);
 void sensor_manager_measure_sensor(uint8_t sensor);
 void sensor_manager_send_config_files();
+void sensor_manager_set_threshold(light_threshold_type_t light_threshold_type);
+bool sensor_manager_get_light_detection_state();
+void sensor_manager_set_light_detection_state(bool state);
 
 #endif //__NETWORK_MANAGER_H

@@ -18,11 +18,11 @@
 
 #define LIGHT_FILE_ID 57
 #define LIGHT_FILE_SIZE sizeof(light_file_t)
-#define RAW_LIGHT_FILE_SIZE 4
+#define RAW_LIGHT_FILE_SIZE 8
 
 #define LIGHT_CONFIG_FILE_ID 67
 #define LIGHT_CONFIG_FILE_SIZE sizeof(light_config_file_t)
-#define RAW_LIGHT_CONFIG_FILE_SIZE 8
+#define RAW_LIGHT_CONFIG_FILE_SIZE 16
 
 #define TESTMODE_LIGHT_INTERVAL_SEC 30
 #define DEFAULT_LIGHT_INTERVAL_SEC 60 * 5
@@ -32,6 +32,9 @@ typedef struct {
         uint8_t bytes[RAW_LIGHT_FILE_SIZE];
         struct {
             uint32_t light_als;
+            uint16_t light_als_raw;
+            bool threshold_high_triggered;
+            bool threshold_low_triggered;
         } __attribute__((__packed__));
     };
 } light_file_t;
@@ -44,17 +47,30 @@ typedef struct {
             uint8_t integration_time;
             uint8_t persistence_protect_number;
             uint8_t gain;
+            uint16_t threshold_high;
+            uint16_t threshold_low;
+            bool light_detection_mode;
+            uint8_t low_power_mode;
+            uint8_t interrupt_check_interval;
+            uint8_t threshold_menu_offset;
             bool enabled;
         } __attribute__((__packed__));
     };
 } light_config_file_t;
 
 static void file_modified_callback(uint8_t file_id);
+static void check_interrupt_state();
 
 static light_config_file_t light_config_file_cached = (light_config_file_t) { .interval = DEFAULT_LIGHT_INTERVAL_SEC,
     .integration_time = ALS_INTEGRATION_100ms,
     .persistence_protect_number = ALS_PERSISTENCE_1,
     .gain = ALS_GAIN_x1,
+    .threshold_high = 4000,
+    .threshold_low = 100,
+    .light_detection_mode = false,
+    .interrupt_check_interval = 1,
+    .low_power_mode = ALS_POWER_MODE_1,
+    .threshold_menu_offset = 50,
     .enabled = true };
 
 static bool light_file_transmit_state = false;
@@ -64,6 +80,7 @@ static bool test_mode_state = false;
 error_t light_files_initialize()
 {
     sched_register_task(&light_file_execute_measurement);
+    sched_register_task(&check_interrupt_state);
     d7ap_fs_file_header_t volatile_file_header
         = { .file_permissions = (file_permission_t) { .guest_read = true, .user_read = true },
               .file_properties.storage_class = FS_STORAGE_VOLATILE,
@@ -100,7 +117,8 @@ error_t light_files_initialize()
     d7ap_fs_register_file_modified_callback(LIGHT_FILE_ID, &file_modified_callback);
     VEML7700_init(platf_get_i2c_handle());
     VEML7700_change_settings(light_config_file_cached.integration_time,
-        light_config_file_cached.persistence_protect_number, light_config_file_cached.gain);
+        light_config_file_cached.persistence_protect_number, light_config_file_cached.gain,
+        light_config_file_cached.light_detection_mode, light_config_file_cached.low_power_mode);
 }
 
 static void file_modified_callback(uint8_t file_id)
@@ -109,11 +127,22 @@ static void file_modified_callback(uint8_t file_id)
         uint32_t size = LIGHT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &size, ROOT_AUTH);
         VEML7700_change_settings(light_config_file_cached.integration_time,
-            light_config_file_cached.persistence_protect_number, light_config_file_cached.gain);
+            light_config_file_cached.persistence_protect_number, light_config_file_cached.gain,
+            light_config_file_cached.light_detection_mode, light_config_file_cached.low_power_mode);
         if (light_config_file_cached.enabled && light_config_file_transmit_state)
-            timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+            timer_post_task_delay(
+                &light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
         else
             timer_cancel_task(&light_file_execute_measurement);
+
+        if (light_config_file_cached.enabled && light_config_file_cached.light_detection_mode) {
+            VEML7700_set_shutdown_state(false);
+            timer_post_task_delay(
+                &check_interrupt_state, light_config_file_cached.interrupt_check_interval * TIMER_TICKS_PER_SEC);
+        } else {
+            VEML7700_set_shutdown_state(true);
+            timer_cancel_task(&check_interrupt_state);
+        }
 
         if (light_config_file_transmit_state)
             queue_add_file(light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, LIGHT_CONFIG_FILE_ID);
@@ -124,6 +153,23 @@ static void file_modified_callback(uint8_t file_id)
         queue_add_file(light_file.bytes, LIGHT_FILE_SIZE, LIGHT_FILE_ID);
         timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
     }
+}
+
+static void check_interrupt_state()
+{
+    bool high_triggered, low_triggered;
+    float parsed_light_als;
+    uint16_t raw_data = 0;
+    VEML7700_get_interrupt_state(&high_triggered, &low_triggered);
+    if (high_triggered || low_triggered) {
+        VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
+        light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als * 1000),
+            .light_als_raw = raw_data,
+            .threshold_high_triggered = high_triggered,
+            .threshold_low_triggered = low_triggered };
+    }
+    timer_post_task_delay(
+        &check_interrupt_state, light_config_file_cached.interrupt_check_interval * TIMER_TICKS_PER_SEC);
 }
 
 void light_file_transmit_config_file()
@@ -137,10 +183,15 @@ void light_file_execute_measurement()
 {
     float parsed_light_als;
     uint16_t raw_data = 0;
-    VEML7700_set_shutdown_state(false);
+    if (!light_config_file_cached.light_detection_mode)
+        VEML7700_set_shutdown_state(false);
     VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
-    light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als * 1000) };
-    VEML7700_set_shutdown_state(true);
+    light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als * 1000),
+        .light_als_raw = raw_data,
+        .threshold_high_triggered = false,
+        .threshold_low_triggered = false };
+    if (!light_config_file_cached.light_detection_mode)
+        VEML7700_set_shutdown_state(true);
     d7ap_fs_write_file(LIGHT_FILE_ID, 0, light_file.bytes, LIGHT_FILE_SIZE, ROOT_AUTH);
 }
 
@@ -151,6 +202,14 @@ void light_file_set_measure_state(bool enable)
     light_config_file_transmit_state = enable;
     if (light_config_file_cached.enabled && light_config_file_transmit_state)
         timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+    if (light_config_file_cached.enabled && light_config_file_cached.light_detection_mode) {
+        VEML7700_set_shutdown_state(false);
+        timer_post_task_delay(
+            &check_interrupt_state, light_config_file_cached.interrupt_check_interval * TIMER_TICKS_PER_SEC);
+    } else {
+        VEML7700_set_shutdown_state(true);
+        timer_cancel_task(&check_interrupt_state);
+    }
 }
 
 void light_file_set_test_mode(bool enable)
@@ -167,7 +226,8 @@ void light_file_set_test_mode(bool enable)
         uint32_t size = LIGHT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &size, ROOT_AUTH);
         if (light_config_file_cached.enabled && light_config_file_transmit_state) {
-            timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
+            timer_post_task_delay(
+                &light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
         }
     }
 }
@@ -186,6 +246,62 @@ void light_file_set_interval(uint32_t interval)
 {
     if (light_config_file_cached.interval != interval) {
         light_config_file_cached.interval = interval;
+        d7ap_fs_write_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, ROOT_AUTH);
+    }
+}
+
+void light_file_set_light_detection_mode(bool state)
+{
+    if (light_config_file_cached.light_detection_mode != state) {
+        light_config_file_cached.light_detection_mode = state;
+        d7ap_fs_write_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, ROOT_AUTH);
+    }
+}
+
+bool light_file_get_light_detection_mode() { return light_config_file_cached.light_detection_mode; }
+
+void light_file_set_current_light_as_low_threshold()
+{
+    float parsed_light_als;
+    uint16_t raw_data = 0;
+
+    VEML7700_change_settings(light_config_file_cached.integration_time,
+        light_config_file_cached.persistence_protect_number, light_config_file_cached.gain, false,
+        light_config_file_cached.low_power_mode);
+    VEML7700_set_shutdown_state(false);
+    VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
+    VEML7700_set_shutdown_state(true);
+    VEML7700_change_settings(light_config_file_cached.integration_time,
+        light_config_file_cached.persistence_protect_number, light_config_file_cached.gain,
+        light_config_file_cached.light_detection_mode, light_config_file_cached.low_power_mode);
+
+    raw_data = raw_data + light_config_file_cached.threshold_menu_offset;
+
+    if (light_config_file_cached.threshold_low != raw_data) {
+        light_config_file_cached.threshold_low = raw_data;
+        d7ap_fs_write_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, ROOT_AUTH);
+    }
+}
+
+void light_file_set_current_light_as_high_threshold()
+{
+    float parsed_light_als;
+    uint16_t raw_data = 0;
+
+    VEML7700_change_settings(light_config_file_cached.integration_time,
+        light_config_file_cached.persistence_protect_number, light_config_file_cached.gain, false,
+        light_config_file_cached.low_power_mode);
+    VEML7700_set_shutdown_state(false);
+    VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
+    VEML7700_set_shutdown_state(true);
+    VEML7700_change_settings(light_config_file_cached.integration_time,
+        light_config_file_cached.persistence_protect_number, light_config_file_cached.gain,
+        light_config_file_cached.light_detection_mode, light_config_file_cached.low_power_mode);
+
+    raw_data = raw_data - light_config_file_cached.threshold_menu_offset;
+
+    if (light_config_file_cached.threshold_high != raw_data) {
+        light_config_file_cached.threshold_high = raw_data;
         d7ap_fs_write_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, ROOT_AUTH);
     }
 }

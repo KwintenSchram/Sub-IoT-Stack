@@ -148,3 +148,15 @@ void sensor_manager_send_config_files()
     pir_file_transmit_config_file();
     hall_effect_file_transmit_config_file();
 }
+
+void sensor_manager_set_threshold(light_threshold_type_t light_threshold_type)
+{
+    if (light_threshold_type == LIGHT_THRESHOLD_HIGH)
+        light_file_set_current_light_as_high_threshold();
+    else if (light_threshold_type == LIGHT_THRESHOLD_LOW)
+        light_file_set_current_light_as_low_threshold();
+}
+
+bool sensor_manager_get_light_detection_state() { return light_file_get_light_detection_mode(); }
+
+void sensor_manager_set_light_detection_state(bool state) { light_file_set_light_detection_mode(state); }

@@ -21,10 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "HDC1080DM.h"
-#include "PYD1598.h"
-#include "VEML7700.h"
-#include "adc_stuff.h"
 #include "button.h"
 #include "button_file.h"
 #include "debug.h"
@@ -34,8 +30,6 @@
 #include "scheduler.h"
 #include "sensor_manager.h"
 #include "state_machine_file.h"
-#include "stm32_common_gpio.h"
-#include "timer.h"
 
 #define FRAMEWORK_APP_LOG 1
 #ifdef FRAMEWORK_APP_LOG
@@ -53,9 +47,10 @@ typedef enum {
     BOOTED_STATE,
     OPERATIONAL_STATE,
     SENSOR_CONFIGURATION_STATE,
+    INTERVAL_CONFIGURATION_STATE,
     TEST_STATE,
     TRANSPORT_STATE,
-    INTERVAL_CONFIGURATION_STATE
+    LIGHT_DETECTION_CONFIGURATION_STATE,
 } APP_STATE_t;
 
 typedef enum {
@@ -80,6 +75,7 @@ static buttons_state_t current_buttons_state = NO_BUTTON_PRESSED;
 static buttons_state_t previous_buttons_state = NO_BUTTON_PRESSED;
 static buttons_state_t max_buttons_state = NO_BUTTON_PRESSED;
 static buttons_state_t prev_max_buttons_state = NO_BUTTON_PRESSED;
+static input_type_t prev_input_type = STATE_COUNTER_EVENT;
 static uint8_t app_event_counter = 0;
 static bool timer_active = false;
 static uint8_t operational_event_timer_counter = 0;
@@ -121,15 +117,32 @@ static void switch_state(APP_STATE_t new_state)
 {
     DPRINT("entering a new state: %d", new_state);
     current_app_state = new_state;
-    sensor_manager_set_transmit_state(new_state == OPERATIONAL_STATE || new_state == TEST_STATE);
-    if (new_state == SENSOR_CONFIGURATION_STATE) {
-        sensor_manager_get_sensor_states(sensor_enabled_state_array);
-    }
     previous_app_state = state_machine_file_switch_state(current_app_state);
-    if (previous_app_state == INTERVAL_CONFIGURATION_STATE || previous_app_state == SENSOR_CONFIGURATION_STATE)
-        sensor_manager_send_config_files();
-    else if (previous_app_state == TRANSPORT_STATE)
-        sensor_manager_send_config_files();
+    switch (new_state) {
+    case OPERATIONAL_STATE:;
+        sensor_manager_set_transmit_state(true);
+        if (previous_app_state != BOOTED_STATE && previous_app_state != OPERATIONAL_STATE
+            && previous_app_state != TEST_STATE)
+            sensor_manager_send_config_files();
+        break;
+    case SENSOR_CONFIGURATION_STATE:;
+        sensor_manager_get_sensor_states(sensor_enabled_state_array);
+        break;
+    case INTERVAL_CONFIGURATION_STATE:;
+        sensor_manager_set_transmit_state(false);
+        break;
+    case TEST_STATE:;
+        sensor_manager_set_transmit_state(true);
+        break;
+    case TRANSPORT_STATE:;
+        sensor_manager_set_transmit_state(false);
+        break;
+    case LIGHT_DETECTION_CONFIGURATION_STATE:;
+        sensor_manager_set_transmit_state(false);
+        break;
+    default:;
+        break;
+    }
 }
 
 static void display_state(bool state) { led_flash(state ? 1 : 2); }
@@ -193,6 +206,33 @@ static void test_state_input_event_handler(input_type_t i, bool mask)
     sensor_manager_measure_sensor(i);
 }
 
+static void light_detection_configuration_state_event_handler(input_type_t i, bool mask)
+{
+    if (current_buttons_state != NO_BUTTON_PRESSED || mask == true) {
+        return;
+    }
+    switch (i) {
+    case BUTTON1_EVENT:;
+        if (prev_input_type == BUTTON1_EVENT) {
+            sensor_manager_set_light_detection_state(!sensor_manager_get_light_detection_state());
+            display_state(sensor_manager_get_light_detection_state());
+
+        } else {
+            display_state(sensor_manager_get_light_detection_state());
+        }
+        break;
+    case BUTTON2_EVENT:;
+        sensor_manager_set_threshold(LIGHT_THRESHOLD_HIGH);
+        break;
+    case BUTTON3_EVENT:;
+        sensor_manager_set_threshold(LIGHT_THRESHOLD_LOW);
+        break;
+    default:
+        break;
+    }
+    prev_input_type = i;
+}
+
 static void app_state_input_event_handler(input_type_t i, bool mask)
 {
     switch (current_app_state) {
@@ -207,6 +247,10 @@ static void app_state_input_event_handler(input_type_t i, bool mask)
         break;
     case TEST_STATE:
         test_state_input_event_handler(i, mask);
+        break;
+    case LIGHT_DETECTION_CONFIGURATION_STATE:;
+        light_detection_configuration_state_event_handler(i, mask);
+        break;
     default:
         break;
     }
@@ -214,11 +258,11 @@ static void app_state_input_event_handler(input_type_t i, bool mask)
 
 void bootstrap()
 {
-    state_machine_file_initialize();
     little_queue_init();
     sched_register_task(&state_counter_event);
     button_file_register_cb(&userbutton_callback);
     booted_button_state = button_get_booted_state();
+    state_machine_file_initialize();
     sensor_manager_init();
 
     switch (booted_button_state) {
@@ -236,6 +280,9 @@ void bootstrap()
         break;
     case BUTTON2_3_PRESSED:
         switch_state(TEST_STATE);
+        break;
+    case BUTTON1_3_PRESSED:
+        switch_state(LIGHT_DETECTION_CONFIGURATION_STATE);
         break;
     }
 
