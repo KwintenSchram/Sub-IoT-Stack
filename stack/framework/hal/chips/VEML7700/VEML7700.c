@@ -156,7 +156,7 @@ void VEML7700_change_settings(
     }
 
     if (low_power_enabled != current_low_power_mode_state) {
-        current_low_power_mode_state = true;
+        current_low_power_mode_state = low_power_enabled;
         current_power_mode = low_power_mode;
         VEML7700_set_power_mode(current_power_mode, current_low_power_mode_state);
     }
@@ -244,9 +244,7 @@ error_t VEML7700_get_interrupt_state(bool* high_triggered, bool* low_triggered)
 {
     uint16_t interrupt_state;
     user_i2c_read(VEML7700_INTERRUPT_STATUS, &interrupt_state);
-
     *high_triggered = interrupt_state & (1 << 14);
     *low_triggered = interrupt_state & (1 << 15);
-    log_print_string("treshold interrupt state %d, %d, %d", interrupt_state, *high_triggered, *low_triggered);
     return SUCCESS;
 }

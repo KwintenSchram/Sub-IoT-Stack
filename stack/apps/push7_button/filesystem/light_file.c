@@ -68,8 +68,8 @@ static light_config_file_t light_config_file_cached = (light_config_file_t) { .i
     .threshold_high = 4000,
     .threshold_low = 100,
     .light_detection_mode = false,
-    .interrupt_check_interval = 1,
-    .low_power_mode = ALS_POWER_MODE_1,
+    .interrupt_check_interval = 2,
+    .low_power_mode = ALS_POWER_MODE_2,
     .threshold_menu_offset = 50,
     .enabled = true };
 
@@ -77,6 +77,8 @@ static bool light_file_transmit_state = false;
 static bool light_config_file_transmit_state = false;
 static bool test_mode_state = false;
 static bool reset_trigger_required = false;
+static bool prev_high_trigger_state = false;
+static bool prev_low_trigger_state = false;
 
 error_t light_files_initialize()
 {
@@ -136,7 +138,8 @@ static void file_modified_callback(uint8_t file_id)
         else
             timer_cancel_task(&light_file_execute_measurement);
 
-        if (light_config_file_cached.enabled && light_config_file_cached.light_detection_mode) {
+        if (light_config_file_cached.enabled && light_config_file_cached.light_detection_mode
+            && light_config_file_transmit_state) {
             VEML7700_set_shutdown_state(false);
             timer_post_task_delay(
                 &check_interrupt_state, light_config_file_cached.interrupt_check_interval * TIMER_TICKS_PER_SEC);
@@ -159,18 +162,30 @@ static void file_modified_callback(uint8_t file_id)
 static void check_interrupt_state()
 {
     bool high_triggered, low_triggered;
-    float parsed_light_als;
+    float parsed_light_als = 0;
     uint16_t raw_data = 0;
-    VEML7700_get_interrupt_state(&high_triggered, &low_triggered);
-    if (high_triggered || low_triggered || reset_trigger_required) {
-        VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
+
+    VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
+
+    high_triggered = (raw_data > light_config_file_cached.threshold_high);
+    low_triggered = (raw_data < light_config_file_cached.threshold_low);
+
+    if ((high_triggered && !prev_high_trigger_state) || (low_triggered && !prev_low_trigger_state)
+        || (!high_triggered && prev_high_trigger_state) || (!low_triggered && prev_low_trigger_state)) {
         light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als * 1000),
             .light_als_raw = raw_data,
             .threshold_high_triggered = high_triggered,
             .threshold_low_triggered = low_triggered };
         d7ap_fs_write_file(LIGHT_FILE_ID, 0, light_file.bytes, LIGHT_FILE_SIZE, ROOT_AUTH);
-        reset_trigger_required = high_triggered || low_triggered;
+        log_print_string(
+            "interrupt triggered high %d, low %d, reset %d, high thresh %d, low thresh %d, actual value %d",
+            high_triggered, low_triggered, reset_trigger_required, light_config_file_cached.threshold_high,
+            light_config_file_cached.threshold_low, raw_data);
+
+        prev_low_trigger_state = low_triggered;
+        prev_high_trigger_state = high_triggered;
     }
+
     timer_post_task_delay(
         &check_interrupt_state, light_config_file_cached.interrupt_check_interval * TIMER_TICKS_PER_SEC);
 }
@@ -205,7 +220,8 @@ void light_file_set_measure_state(bool enable)
     light_config_file_transmit_state = enable;
     if (light_config_file_cached.enabled && light_config_file_transmit_state)
         timer_post_task_delay(&light_file_execute_measurement, light_config_file_cached.interval * TIMER_TICKS_PER_SEC);
-    if (light_config_file_cached.enabled && light_config_file_cached.light_detection_mode) {
+    if (light_config_file_cached.enabled && light_config_file_cached.light_detection_mode
+        && light_config_file_transmit_state) {
         VEML7700_set_shutdown_state(false);
         timer_post_task_delay(
             &check_interrupt_state, light_config_file_cached.interrupt_check_interval * TIMER_TICKS_PER_SEC);
