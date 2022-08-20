@@ -23,5 +23,8 @@ void sensor_manager_get_sensor_states(uint8_t sensor_enabled_state_array[]);
 void sensor_manager_set_interval(uint32_t interval);
 void sensor_manager_measure_sensor(uint8_t sensor);
 void sensor_manager_send_config_files();
+void sensor_manager_set_light_threshold(bool high_threshold);
+bool sensor_manager_get_light_detection_state();
+void sensor_manager_set_light_detection_state(bool state);
 
 #endif //__NETWORK_MANAGER_H
