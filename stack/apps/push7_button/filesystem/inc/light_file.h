@@ -14,7 +14,6 @@ void light_file_execute_measurement();
 void light_file_transmit_config_file();
 void light_file_set_light_detection_mode(bool state);
 bool light_file_get_light_detection_mode();
-void light_file_set_current_light_as_low_threshold();
-void light_file_set_current_light_as_high_threshold();
+void light_file_set_current_light_as_threshold(bool high_threshold);
 
 #endif

@@ -19,8 +19,8 @@ typedef struct {
     union {
         uint8_t bytes[RAW_STATE_MACHINE_FILE_SIZE];
         struct {
-            uint8_t current_app_state;
-            uint8_t previous_app_state;
+            APP_STATE_t current_app_state;
+            APP_STATE_t previous_app_state;
         } __attribute__((__packed__));
     };
 } state_machine_file_t;
@@ -45,13 +45,14 @@ error_t state_machine_file_initialize()
         ret = d7ap_fs_init_file(STATE_MACHINE_FILE_ID, &permanent_file_header, state_machine_file_cached.bytes);
         if (ret != SUCCESS) {
             log_print_error_string("Error initializing state_machine_file: %d", ret);
-            return ret;
         }
     } else if (ret != SUCCESS)
         log_print_error_string("Error reading state_machine_file: %d", ret);
+
+    return ret;
 }
 
-uint8_t state_machine_file_switch_state(uint8_t state)
+uint8_t state_machine_file_switch_state(APP_STATE_t state)
 {
     state_machine_file_cached.previous_app_state = state_machine_file_cached.current_app_state;
     state_machine_file_cached.current_app_state = state;
