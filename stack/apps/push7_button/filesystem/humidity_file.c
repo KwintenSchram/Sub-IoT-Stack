@@ -130,8 +130,8 @@ void humidity_file_execute_measurement()
     HDC1080DM_read_temperature(&parsed_temperature);
     HDC1080DM_read_humidity(&parsed_humidity);
 
-    humidity_file_t humidity_file = { .humidity = (int32_t)round(parsed_humidity * 1000),
-        .temperature = (int32_t)round(parsed_temperature * 1000) };
+    humidity_file_t humidity_file = { .humidity = (int32_t)round(parsed_humidity * 10),
+        .temperature = (int32_t)round(parsed_temperature * 10) };
     d7ap_fs_write_file(HUMIDITY_FILE_ID, 0, humidity_file.bytes, HUMIDITY_FILE_SIZE, ROOT_AUTH);
 }
 

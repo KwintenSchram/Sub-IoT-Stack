@@ -31,8 +31,8 @@ typedef struct {
     union {
         uint8_t bytes[RAW_LIGHT_FILE_SIZE];
         struct {
-            uint32_t light_als;
-            uint16_t light_als_raw;
+            uint32_t light_level;
+            uint16_t light_level_raw;
             bool threshold_high_triggered;
             bool threshold_low_triggered;
         } __attribute__((__packed__));
@@ -170,8 +170,8 @@ static void check_interrupt_state()
     low_triggered = (raw_data < light_config_file_cached.threshold_low);
 
     if ((high_triggered == prev_high_trigger_state) || (low_triggered == prev_low_trigger_state)) {
-        light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als * 1000),
-            .light_als_raw = raw_data,
+        light_file_t light_file = { .light_level = (uint32_t)round(parsed_light_als * 1000),
+            .light_level_raw = raw_data,
             .threshold_high_triggered = high_triggered,
             .threshold_low_triggered = low_triggered };
         d7ap_fs_write_file(LIGHT_FILE_ID, 0, light_file.bytes, LIGHT_FILE_SIZE, ROOT_AUTH);
@@ -200,8 +200,8 @@ void light_file_execute_measurement()
     if (!light_config_file_cached.light_detection_mode)
         VEML7700_set_shutdown_state(false);
     VEML7700_read_ALS_Lux(&raw_data, &parsed_light_als);
-    light_file_t light_file = { .light_als = (uint32_t)round(parsed_light_als * 1000),
-        .light_als_raw = raw_data,
+    light_file_t light_file = { .light_level = (uint32_t)round(parsed_light_als * 10),
+        .light_level_raw = raw_data,
         .threshold_high_triggered = false,
         .threshold_low_triggered = false };
     if (!light_config_file_cached.light_detection_mode)
