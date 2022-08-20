@@ -27,7 +27,7 @@ typedef struct {
     union {
         uint8_t bytes[RAW_HALL_EFFECT_FILE_SIZE];
         struct {
-            uint8_t mask;
+            bool mask;
         } __attribute__((__packed__));
     };
 } hall_effect_file_t;
@@ -36,9 +36,9 @@ typedef struct {
     union {
         uint8_t bytes[RAW_HALL_EFFECT_CONFIG_FILE_SIZE];
         struct {
-            uint8_t transmit_mask_0;
-            uint8_t transmit_mask_1;
-            uint8_t enabled;
+            bool transmit_mask_0;
+            bool transmit_mask_1;
+            bool enabled;
         } __attribute__((__packed__));
     };
 } hall_effect_config_file_t;

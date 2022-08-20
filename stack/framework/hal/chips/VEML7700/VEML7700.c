@@ -19,14 +19,14 @@
 
 static i2c_handle_t* i2c_dev;
 static uint16_t measurement_wait_time_ms;
+static uint8_t current_power_mode = ALS_POWER_MODE_4;
+static uint8_t current_low_power_mode_state = false;
 
 static VEML7700_CONFIG_REG current_config_reg = { .ALS_GAIN = ALS_GAIN_x1,
-    .ALS_INT_EN = 0,
+    .ALS_INT_EN = false,
     .ALS_IT = ALS_INTEGRATION_100ms,
     .ALS_PERS = ALS_PERSISTENCE_1,
     .ALS_SD = 1 };
-
-static uint8_t current_power_mode = ALS_POWER_MODE_4;
 
 typedef enum {
     VEML7700_CONFIGURATION_REGISTER = 0x00,
@@ -39,6 +39,7 @@ typedef enum {
 } VEML7700_Pointers;
 
 static void convert_data_to_lux(uint16_t raw_counts, float* lux);
+static error_t VEML7700_configure(VEML7700_CONFIG_REG reg);
 
 /*!
  * @brief This function reading the sensor's registers through I2C bus.
@@ -140,10 +141,11 @@ error_t VEML7700_init(i2c_handle_t* i2c_handle)
     VEML7700_set_shutdown_state(true);
 }
 
-void VEML7700_change_settings(uint8_t integration_time, uint8_t persistence_number, uint8_t gain)
+void VEML7700_change_settings(
+    uint8_t integration_time, uint8_t persistence_number, uint8_t gain, bool low_power_enabled, uint8_t low_power_mode)
 {
     VEML7700_CONFIG_REG new_config_reg = { .ALS_GAIN = gain,
-        .ALS_INT_EN = 0,
+        .ALS_INT_EN = current_config_reg.ALS_INT_EN,
         .ALS_IT = integration_time,
         .ALS_PERS = persistence_number,
         .ALS_SD = current_config_reg.ALS_SD };
@@ -152,12 +154,18 @@ void VEML7700_change_settings(uint8_t integration_time, uint8_t persistence_numb
         current_config_reg.rawData = new_config_reg.rawData;
         VEML7700_configure(current_config_reg);
     }
+
+    if (low_power_enabled != current_low_power_mode_state) {
+        current_low_power_mode_state = low_power_enabled;
+        current_power_mode = low_power_mode;
+        VEML7700_set_power_mode(current_power_mode, current_low_power_mode_state);
+    }
 }
 
 /*!
  * @brief Writes the desired settings to the sensor and stores it for the conversion formula
  */
-error_t VEML7700_configure(VEML7700_CONFIG_REG reg)
+static error_t VEML7700_configure(VEML7700_CONFIG_REG reg)
 {
     current_config_reg = reg;
     measurement_wait_time_ms = 25;
@@ -184,12 +192,14 @@ error_t VEML7700_set_power_mode(VEML7700_ALS_POWER_MODE mode, bool power_saving_
  */
 error_t VEML7700_read_ALS_Lux(uint16_t* raw_data, float* light_lux)
 {
-    for (uint8_t i = 0; i < measurement_wait_time_ms + 1; i++)
-        hw_busy_wait(1000);
+    if (!current_low_power_mode_state) {
+        for (uint8_t i = 0; i < measurement_wait_time_ms + 1; i++)
+            hw_busy_wait(1000);
+    }
 
     error_t ret = user_i2c_read(VEML7700_ALS_HIGH_RESOLUTION_OUTPUT_DATA, raw_data);
     convert_data_to_lux(*raw_data, light_lux);
-    DPRINT("VEML7700 als channel output: %d, lux %d", *raw_data, (uint32_t)round(*light_lux));
+    DPRINT("VEML7700 als channel output: %d, lux %d \n", *raw_data, (uint32_t)round(*light_lux));
     return ret;
 }
 
@@ -217,4 +227,24 @@ error_t VEML7700_set_shutdown_state(bool state)
 
     } else
         return EALREADY;
+}
+
+error_t VEML7700_set_threshold(bool interrupt_enabled, uint16_t threshold_high, uint16_t threshold_low)
+{
+    user_i2c_write(VEML7700_HIGH_THRESHOLD_WINDOWS_SETTING, threshold_high);
+    user_i2c_write(VEML7700_LOW_THRESHOLD_WINDOWS_SETTING, threshold_low);
+    if (current_config_reg.ALS_INT_EN != interrupt_enabled) {
+        current_config_reg.ALS_INT_EN = interrupt_enabled;
+        VEML7700_configure(current_config_reg);
+    }
+    return SUCCESS;
+}
+
+error_t VEML7700_get_interrupt_state(bool* high_triggered, bool* low_triggered)
+{
+    uint16_t interrupt_state;
+    user_i2c_read(VEML7700_INTERRUPT_STATUS, &interrupt_state);
+    *high_triggered = interrupt_state & (1 << 14);
+    *low_triggered = interrupt_state & (1 << 15);
+    return SUCCESS;
 }
