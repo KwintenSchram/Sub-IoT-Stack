@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2021 University of Antwerp, Aloxy NV.
+ * Copyright (c) 2015-2021 University of Antwerp, Aloxy NV, LiQuiBit VOF.
  *
  * This file is part of Sub-IoT.
  * See https://github.com/Sub-IoT/Sub-IoT-Stack for further info.
@@ -15,6 +15,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/* \file
+ *
+ *
+ * @author info@liquibit.be
  */
 
 #ifndef __PLATFORM_H_
