@@ -18,8 +18,8 @@ typedef enum {
 void sensor_manager_init();
 void sensor_manager_set_transmit_state(bool state);
 void sensor_manager_set_test_mode(bool enable);
-void sensor_manager_set_sensor_states(uint8_t sensor_enabled_state_array[]);
-void sensor_manager_get_sensor_states(uint8_t sensor_enabled_state_array[]);
+void sensor_manager_set_sensor_states(bool sensor_enabled_state_array[]);
+void sensor_manager_get_sensor_states(bool sensor_enabled_state_array[]);
 void sensor_manager_set_interval(uint32_t interval);
 void sensor_manager_measure_sensor(uint8_t sensor);
 void sensor_manager_send_config_files();

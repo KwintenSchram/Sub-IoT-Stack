@@ -173,7 +173,7 @@ void push7_flash_set_led_enabled(bool state)
 {
     if (push7_state_config_file_cached.led_flash_state != state) {
         push7_state_config_file_cached.led_flash_state = state;
-        d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_SIZE, 0, push7_state_config_file_cached.bytes,
+        d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes,
             PUSH7_STATE_CONFIG_FILE_SIZE, ROOT_AUTH);
     }
 }
@@ -182,7 +182,7 @@ void push7_state_file_set_enabled(bool enable)
 {
     if (push7_state_config_file_cached.enabled != enable) {
         push7_state_config_file_cached.enabled = enable;
-        d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_SIZE, 0, push7_state_config_file_cached.bytes,
+        d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes,
             PUSH7_STATE_CONFIG_FILE_SIZE, ROOT_AUTH);
     }
 }
@@ -191,7 +191,7 @@ void push7_state_file_set_interval(uint32_t interval)
 {
     if (push7_state_config_file_cached.interval != interval) {
         push7_state_config_file_cached.interval = interval;
-        d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_SIZE, 0, push7_state_config_file_cached.bytes,
+        d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes,
             PUSH7_STATE_CONFIG_FILE_SIZE, ROOT_AUTH);
     }
 }
