@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2021 University of Antwerp, Aloxy NV.
+ * Copyright (c) 2015-2021 University of Antwerp, Aloxy NV, LiQuiBit VOF.
  *
  * This file is part of Sub-IoT.
  * See https://github.com/Sub-IoT/Sub-IoT-Stack for further info.
@@ -19,14 +19,8 @@
 
 /* \file
  *
- * Interface to the hardware buttons of the gecko board. This file is NOT a part of the
- * 'HAL' interface since not every platform will have buttons
  *
- * The EFM32GG 'Giant Geck' board has two userbuttons. PB0 and PB1.
- * These buttons are identified using a button_id_t.
- *  - PB0 is identified with button id '0'
- *  - PB1 is identified with button id '1'
- *
+ * @author info@liquibit.be
  */
 #ifndef __PLATFORM_USERBUTTON_H_
 #define __PLATFORM_USERBUTTON_H_

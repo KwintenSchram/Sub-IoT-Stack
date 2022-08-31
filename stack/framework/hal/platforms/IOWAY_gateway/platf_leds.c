@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2021 University of Antwerp, Aloxy NV.
+ * Copyright (c) 2015-2021 University of Antwerp, Aloxy NV, LiQuiBit VOF.
  *
  * This file is part of Sub-IoT.
  * See https://github.com/Sub-IoT/Sub-IoT-Stack for further info.
@@ -17,12 +17,10 @@
  * limitations under the License.
  */
 
-/*! \file platform_leds.c
+/* \file
  *
- *  \author glenn.ergeerts@uantwerpen.be
- *  \author daniel.vandenakker@uantwerpen.be
- *  \author maarten.weyn@uantwerpen.be
  *
+ * @author info@liquibit.be
  */
 
 #include "stm32_device.h"

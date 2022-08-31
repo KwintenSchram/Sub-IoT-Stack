@@ -1,5 +1,5 @@
 #[[
-Copyright (c) 2015-2021 University of Antwerp, Aloxy NV.
+Copyright (c) 2015-2021 University of Antwerp, Aloxy NV, LiQuiBit VOF.
 
 This file is part of Sub-IoT.
 See https://github.com/Sub-IoT/Sub-IoT-Stack for further info.
