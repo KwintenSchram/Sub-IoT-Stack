@@ -90,7 +90,7 @@ void sensor_manager_set_test_mode(bool enable)
     current_testmode_state = enable;
 }
 
-void sensor_manager_set_sensor_states(uint8_t sensor_enabled_state_array[])
+void sensor_manager_set_sensor_states(bool sensor_enabled_state_array[])
 {
     DPRINT("setting enable states");
     DPRINT_DATA(sensor_enabled_state_array, 6);
@@ -114,7 +114,7 @@ void sensor_manager_set_interval(uint32_t interval)
     DPRINT("setting sensor interval %d", interval);
 }
 
-void sensor_manager_get_sensor_states(uint8_t sensor_enabled_state_array[])
+void sensor_manager_get_sensor_states(bool sensor_enabled_state_array[])
 {
     sensor_enabled_state_array[HUMIDITY_SENSOR_INDEX] = humidity_file_is_enabled();
     sensor_enabled_state_array[LIGHT_SENSOR_INDEX] = light_file_is_enabled();

@@ -63,7 +63,7 @@ static input_type_t prev_input_type = STATE_COUNTER_EVENT;
 static uint8_t operational_event_timer_counter = 0;
 static buttons_state_t booted_button_state;
 static bool initial_button_press_released = false;
-static uint8_t sensor_enabled_state_array[ALL_BUTTONS_PRESSED];
+static bool sensor_enabled_state_array[ALL_BUTTONS_PRESSED+1];
 static uint32_t new_sensor_interval = 0;
 
 static void userbutton_callback(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state)
