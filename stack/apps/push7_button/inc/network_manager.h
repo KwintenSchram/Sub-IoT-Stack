@@ -42,5 +42,6 @@ void network_manager_init(last_transmit_completed_callback last_transmit_complet
 error_t transmit_file(uint8_t file_id, uint32_t offset, uint32_t length, uint8_t *data);
 void get_network_quality(uint8_t* acks, uint8_t* nacks);
 network_state_t get_network_manager_state();
+void network_manager_set_tx_power(uint8_t tx_power);
 
 #endif //__NETWORK_MANAGER_H

@@ -38,5 +38,7 @@ bool push7_flash_is_led_enabled();
 void push7_flash_set_led_enabled(bool state);
 void push7_state_file_execute_measurement();
 void push7_state_file_transmit_config_file();
+void push7_state_file_set_high_tx_power_state(bool enable_high_tx_power);
+bool push7_state_file_get_high_tx_power_state();
 
 #endif
