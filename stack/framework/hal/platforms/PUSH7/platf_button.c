@@ -149,9 +149,9 @@ static void button_task()
 
 
 			// gather all button states
-            for (uint8_t i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
+            for (uint8_t b = 0; b < PLATFORM_NUM_BUTTONS; b++) 
 			{
-                all_button_state += buttons[i].last_known_state << i;
+                all_button_state += buttons[b].last_known_state << b;
             }
 			
 			button_state_changed_callback(i, buttons[i].last_known_state, all_button_state);

@@ -29,6 +29,11 @@
 #include "types.h"
 #include "platform.h"
 
+typedef enum {
+    NO_BUTTON_PRESSED = 0,
+    BUTTON0_PRESSED = 1,
+} buttons_state_t;
+
 /* \brief The identifiers for the buttons
  */
 typedef uint8_t button_id_t;
@@ -37,7 +42,7 @@ typedef uint8_t button_id_t;
  *
  * \param button_id		The id of the button that was pressed
  * **/
-typedef void (*ubutton_callback_t)(button_id_t button_id);
+typedef void (*ubutton_callback_t)(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state);
 
 /* \brief Check whether a button is currently pressed or not.
  *
@@ -62,7 +67,7 @@ __LINK_C bool ubutton_pressed(button_id_t button_id);
  *						ENOMEM	if the callback could not be registered because there are already too many
  *								callbacks registered for this button
  */
-__LINK_C error_t ubutton_register_callback(button_id_t button_id, ubutton_callback_t callback);
+__LINK_C error_t ubutton_register_callback(ubutton_callback_t callback);
 
 /* \brief Deregister a callback function previously registered using 'register_button_callback'
  *
@@ -73,9 +78,11 @@ __LINK_C error_t ubutton_register_callback(button_id_t button_id, ubutton_callba
  *  					EINVAL if callback is 0x0
  *						EALREADY if the callback was not registered for this button
  */
-__LINK_C error_t ubutton_deregister_callback(button_id_t button_id, ubutton_callback_t callback);
+__LINK_C error_t ubutton_deregister_callback();
 
 //not a user function
 void __ubutton_init();
+
+buttons_state_t button_get_booted_state();
 
 #endif

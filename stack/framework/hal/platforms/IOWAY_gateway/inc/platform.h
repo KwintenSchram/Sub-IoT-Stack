@@ -50,7 +50,7 @@
  * USERBUTTON DEFINITIONS *
  *************************/
 
-#define BUTTON0           PIN(1, 6)
+#define BUTTON0_PIN           PIN(1, 6)
 
 #if defined(USE_SX127X) || defined(USE_NETDEV_DRIVER)
   // TODO tmp

@@ -49,6 +49,23 @@
 #if PLATFORM_NUM_LEDS > 0
   #include "hwleds.h"
 
+  static bool led_enabled = true;
+
+  #if PLATFORM_NUM_BUTTONS > 0
+  #include "button.h"
+
+  void led_blink(alp_command_t* command, alp_interface_status_t* origin_itf_status);
+
+  static void button_callback(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state) {
+    // only trigger on falling edge
+    if(mask)
+      return;
+
+    led_enabled = !led_enabled;
+  }
+
+  #endif
+
   void led_blink_off()
   {
     led_off(0);
@@ -57,6 +74,9 @@
   void led_blink(alp_command_t* command, alp_interface_status_t* origin_itf_status)
   {
     log_print_string("gotten message from interface 0x%X", origin_itf_status ? origin_itf_status->itf_id : 0xFF);
+    if(!led_enabled)
+      return;
+  
     led_on(0);
 
     timer_post_task_delay(&led_blink_off, TIMER_TICKS_PER_SEC * 0.2);
@@ -79,6 +99,9 @@ void bootstrap()
 
 #if PLATFORM_NUM_LEDS > 0
   sched_register_task(&led_blink_off);
+  #if PLATFORM_NUM_BUTTONS > 0
+    ubutton_register_callback(&button_callback);
+  #endif
 #endif
 }
 
