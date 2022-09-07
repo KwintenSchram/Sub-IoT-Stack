@@ -58,7 +58,7 @@ __LINK_C void __ubutton_init()
     error_t err;
 	GPIO_InitTypeDef GPIO_InitStruct;
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     buttons[0].button_id = BUTTON0_PIN;
     for (int i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
