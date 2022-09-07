@@ -101,6 +101,8 @@ void led_flash(uint8_t flash_times)
 {
     if (flashing)
         return;
+    if (!flash_times)
+        return;
     remaining_flashes = flash_times - 1;
     __led_on_sched_off();
 }
