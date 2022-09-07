@@ -217,9 +217,6 @@ void bootstrap()
     sensor_manager_init();
 
     switch (booted_button_state) {
-    case NO_BUTTON_PRESSED:
-        switch_state(OPERATIONAL_STATE);
-        break;
     case BUTTON1_PRESSED:
         switch_state(SENSOR_CONFIGURATION_STATE);
         break;
@@ -234,6 +231,9 @@ void bootstrap()
         break;
     case BUTTON1_3_PRESSED:
         switch_state(LIGHT_DETECTION_CONFIGURATION_STATE);
+        break;
+    default:
+        switch_state(OPERATIONAL_STATE);
         break;
     }
 
