@@ -182,3 +182,11 @@ void network_manager_init(last_transmit_completed_callback last_transmit_complet
     }
     network_state = NETWORK_MANAGER_READY;
 }
+
+void network_manager_set_tx_power(uint8_t tx_power)
+{
+    dae_access_profile_t push7_access_profile;
+    d7ap_fs_read_access_class(0, &push7_access_profile);
+    push7_access_profile.subbands[0].eirp = tx_power;
+    d7ap_fs_write_access_class(0, &push7_access_profile);
+}

@@ -28,6 +28,7 @@
 #include "errors.h"
 #include "little_queue.h"
 #include "log.h"
+#include "network_manager.h"
 #include "stdint.h"
 #include "timer.h"
 
@@ -43,9 +44,11 @@
 
 #define PUSH7_STATE_CONFIG_FILE_ID 66
 #define PUSH7_STATE_CONFIG_FILE_SIZE sizeof(push7_state_config_file_t)
-#define RAW_PUSH7_STATE_CONFIG_FILE_SIZE 6
+#define RAW_PUSH7_STATE_CONFIG_FILE_SIZE 7
 
 #define TESTMODE_STATE_INTERVAL_SEC 30
+#define HIGH_TX_POWER 17
+#define LOW_TX_POWER 15
 
 typedef struct {
     union {
@@ -65,6 +68,7 @@ typedef struct {
             uint32_t interval;
             bool led_flash_state;
             bool enabled;
+            uint8_t tx_power;
         } __attribute__((__packed__));
     };
 } push7_state_config_file_t;
@@ -72,7 +76,7 @@ typedef struct {
 static void file_modified_callback(uint8_t file_id);
 
 static push7_state_config_file_t push7_state_config_file_cached
-    = (push7_state_config_file_t) { .interval = 5 * 60, .led_flash_state = true, .enabled = true };
+    = (push7_state_config_file_t) { .interval = 5 * 60, .led_flash_state = true, .enabled = true, .tx_power = LOW_TX_POWER };
 
 static bool push7_state_file_transmit_state = false;
 static bool push7_state_config_file_transmit_state = false;
@@ -115,6 +119,7 @@ error_t push7_state_files_initialize()
     }
     adc_stuff_init();
     little_queue_set_led_state(push7_state_config_file_cached.led_flash_state);
+    network_manager_set_tx_power(push7_state_config_file_cached.tx_power);
     d7ap_fs_register_file_modified_callback(PUSH7_STATE_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(PUSH7_STATE_FILE_ID, &file_modified_callback);
     sched_register_task(&push7_state_file_execute_measurement);
@@ -131,6 +136,7 @@ static void file_modified_callback(uint8_t file_id)
         else
             timer_cancel_task(&push7_state_file_execute_measurement);
         little_queue_set_led_state(push7_state_config_file_cached.led_flash_state);
+        network_manager_set_tx_power(push7_state_config_file_cached.tx_power);
         if (push7_state_config_file_transmit_state)
             queue_add_file(
                 push7_state_config_file_cached.bytes, PUSH7_STATE_CONFIG_FILE_SIZE, PUSH7_STATE_CONFIG_FILE_ID);
@@ -219,3 +225,15 @@ void push7_state_file_set_interval(uint32_t interval)
             PUSH7_STATE_CONFIG_FILE_SIZE, ROOT_AUTH);
     }
 }
+
+void push7_state_file_set_high_tx_power_state(bool enable_high_tx_power)
+{
+    if (enable_high_tx_power)
+        push7_state_config_file_cached.tx_power = HIGH_TX_POWER;
+    else
+        push7_state_config_file_cached.tx_power = LOW_TX_POWER;
+    d7ap_fs_write_file(
+        PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, PUSH7_STATE_CONFIG_FILE_SIZE, ROOT_AUTH);
+}
+
+bool push7_state_file_get_high_tx_power_state() { return (push7_state_config_file_cached.tx_power == HIGH_TX_POWER); }
