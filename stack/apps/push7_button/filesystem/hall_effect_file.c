@@ -39,11 +39,11 @@
 #define DPRINT(...)
 #endif
 
-#define HALL_EFFECT_FILE_ID 52
+#define HALL_EFFECT_FILE_ID 59
 #define HALL_EFFECT_FILE_SIZE sizeof(hall_effect_file_t)
 #define RAW_HALL_EFFECT_FILE_SIZE 1
 
-#define HALL_EFFECT_CONFIG_FILE_ID 62
+#define HALL_EFFECT_CONFIG_FILE_ID 69
 #define HALL_EFFECT_CONFIG_FILE_SIZE sizeof(hall_effect_config_file_t)
 #define RAW_HALL_EFFECT_CONFIG_FILE_SIZE 3
 
