@@ -67,10 +67,10 @@ static void MX_ADC_Init(void)
     }
 }
 
-void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
+void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc_local)
 {
     GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-    if (hadc->Instance == ADC1) {
+    if (hadc_local->Instance == ADC1) {
         __HAL_RCC_ADC1_CLK_ENABLE();
         __HAL_RCC_GPIOA_CLK_ENABLE();
         GPIO_InitStruct.Pin = GPIO_PIN_5;
@@ -80,9 +80,9 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     }
 }
 
-void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
+void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc_local)
 {
-    if (hadc->Instance == ADC1) {
+    if (hadc_local->Instance == ADC1) {
         __HAL_RCC_ADC1_CLK_DISABLE();
         HAL_GPIO_DeInit(GPIOA, GPIO_PIN_5);
     }

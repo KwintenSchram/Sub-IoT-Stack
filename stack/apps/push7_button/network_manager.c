@@ -105,8 +105,9 @@ static void on_alp_command_completed_cb(uint8_t tag_id, bool success)
     timer_cancel_task(&network_timeout);
     if (success) {
         DPRINT("Command (%i) completed successfully", tag_id);
-    } else
+    } else {
         DPRINT("Command failed, no ack received");
+    }
     if(transmit_completed_cb)
         transmit_completed_cb(success);
 }
