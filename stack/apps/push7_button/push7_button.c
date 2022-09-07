@@ -77,23 +77,20 @@ static void switch_state(APP_STATE_t new_state)
     DPRINT("entering a new state: %d", new_state);
     current_app_state = new_state;
     previous_app_state = state_machine_file_switch_state(current_app_state);
+
+    sensor_manager_set_transmit_state((new_state == OPERATIONAL_STATE) || (new_state == TEST_STATE));
+
     switch (new_state) {
     case OPERATIONAL_STATE:
-        sensor_manager_set_transmit_state(true);
         if (previous_app_state != BOOTED_STATE && previous_app_state != OPERATIONAL_STATE
             && previous_app_state != TEST_STATE)
             sensor_manager_send_config_files();
         break;
-    case TEST_STATE:
-        sensor_manager_set_transmit_state(true);
-        break;
     case SENSOR_CONFIGURATION_STATE:
         sensor_manager_get_sensor_states(sensor_enabled_state_array);
+        break;
     case INTERVAL_CONFIGURATION_STATE:
         new_sensor_interval = 0;
-    case TRANSPORT_STATE:
-    case LIGHT_DETECTION_CONFIGURATION_STATE:
-        sensor_manager_set_transmit_state(false);
         break;
     default:;
         break;
