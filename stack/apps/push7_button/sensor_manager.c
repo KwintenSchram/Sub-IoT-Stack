@@ -168,7 +168,7 @@ void sensor_manager_measure_sensor(uint8_t sensor)
 
 void sensor_manager_send_config_files()
 {
-    push7_state_file_execute_measurement();
+    push7_state_file_transmit_config_file();
     humidity_file_transmit_config_file();
     light_file_transmit_config_file();
     pir_file_transmit_config_file();
