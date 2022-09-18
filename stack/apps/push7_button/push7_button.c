@@ -224,7 +224,7 @@ void bootstrap()
         switch_state(INTERVAL_CONFIGURATION_STATE);
         break;
     case BUTTON3_PRESSED:
-        switch_state(TRANSPORT_STATE);
+        switch_state(SLEEP_STATE);
         break;
     case BUTTON2_3_PRESSED:
         switch_state(TEST_STATE);
