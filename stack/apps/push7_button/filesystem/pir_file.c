@@ -81,7 +81,7 @@ static pir_config_file_t pir_config_file_cached = (pir_config_file_t) { .transmi
     .pulse_counter = 1,
     .blind_time = 14,
     .threshold = 0x18,
-    .enabled = true };
+    .enabled = false };
 
 static bool pir_file_transmit_state = false;
 static bool pir_config_file_transmit_state = false;
