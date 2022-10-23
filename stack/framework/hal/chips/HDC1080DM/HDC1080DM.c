@@ -199,7 +199,7 @@ error_t HDC1080DM_read_humidity(float* parsed_humidity)
 
     ret = user_i2c_read(HDC1080_HUMIDITY, &rawH, humidity_readout_time);
 
-    *parsed_humidity = (((rawH / pow(2, 16)) * 165.0) - 40.0);
+    *parsed_humidity = ((rawH / pow(2, 16)) * 100.0);
 
     DPRINT("raw humidity :%d, parsed milihumidity: %d", rawH, (int32_t)round(*parsed_humidity * 1000));
     return ret;
