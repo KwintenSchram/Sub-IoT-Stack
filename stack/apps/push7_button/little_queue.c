@@ -72,6 +72,7 @@ static void queue_transmit_files();
 
 static void queue_transmit_completed(bool success)
 {
+    // if a file successfully got transmitted or we tried too much, remove it from the queue
     if (success || retry_counter >= MAX_RETRY_ATTEMPTS) {
         uint8_t file_id;
         uint8_t file_size;
@@ -87,8 +88,10 @@ static void queue_transmit_completed(bool success)
         retry_counter++;
 
     // TODO add backoff if !success based on #transmits
+    // if there are still files in the queue, transmit the next file
     if (fifo_get_size(&file_fifo) > 0)
         timer_post_task_delay(&queue_transmit_files, 50);
+    // if there are no files left in the queue and the led is enabled, we flash once to show we cleared the queue
     else if (flash_led_enabled)
         led_flash(1);
 }
@@ -106,6 +109,7 @@ static void queue_transmit_files()
     fifo_peek(&file_size_and_id_fifo, &file_id, 1, 1);
     fifo_peek(&file_fifo, file_buffer, 0, file_size);
     DPRINT("transmitting file %d, size %d", file_id, file_size);
+    // for now, we always send files with offset 0
     ret = transmit_file(file_id, 0, file_size, file_buffer);
     DPRINT_DATA(file_buffer, file_size);
     if (ret != SUCCESS)
@@ -127,6 +131,9 @@ void queue_add_file(uint8_t* file_content, uint8_t file_size, uint8_t file_id)
         sched_post_task(&queue_transmit_files);
 }
 
+/**
+ * @brief Initializes the queueing and transmission process
+ */
 void little_queue_init()
 {
     network_manager_init(&queue_transmit_completed);

@@ -121,8 +121,11 @@ error_t pir_files_initialize()
         log_print_error_string("Error initializing hall effect file: %d", ret);
     }
 
+    // register callbacks on any modification of the PIR (config) file
     d7ap_fs_register_file_modified_callback(PIR_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(PIR_FILE_ID, &file_modified_callback);
+
+    // initialize the PIR sensor and default disable it
     PYD1598_init(PIR_IN_PIN, PIR_OUT_PIN);
     PYD1598_set_settings(pir_config_file_cached.filter_source, pir_config_file_cached.window_time,
         pir_config_file_cached.pulse_counter, pir_config_file_cached.blind_time, pir_config_file_cached.threshold);
@@ -140,6 +143,7 @@ static void pir_interrupt_callback(bool mask)
 static void file_modified_callback(uint8_t file_id)
 {
     if (file_id == PIR_CONFIG_FILE_ID) {
+        // pir config file got modified, apply settings and send file
         uint32_t size = PIR_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(PIR_CONFIG_FILE_ID, 0, pir_config_file_cached.bytes, &size, ROOT_AUTH);
         PYD1598_set_settings(pir_config_file_cached.filter_source, pir_config_file_cached.window_time,
@@ -149,6 +153,7 @@ static void file_modified_callback(uint8_t file_id)
         if (pir_config_file_transmit_state)
             queue_add_file(pir_config_file_cached.bytes, PIR_CONFIG_FILE_SIZE, PIR_CONFIG_FILE_ID);
     } else if (file_id == PIR_FILE_ID) {
+        // pir file got modified (internally), send file if configuration allows for it
         pir_file_t pir_file;
         uint32_t size = PIR_FILE_SIZE;
         d7ap_fs_read_file(PIR_FILE_ID, 0, pir_file.bytes, &size, ROOT_AUTH);
@@ -172,6 +177,7 @@ void pir_file_transmit_config_file()
  */
 void pir_file_set_measure_state(bool enable)
 {
+    // enable or disable pir
     if (pir_file_transmit_state != enable) {
         pir_file_transmit_state = enable;
         platf_set_PIR_power_state(enable && pir_config_file_cached.enabled);
@@ -186,6 +192,7 @@ void pir_file_set_measure_state(bool enable)
  */
 void pir_file_set_test_mode(bool enable)
 {
+    // enable test mode which overrides the current configuration to always send
     if (test_mode_state == enable)
         return;
     test_mode_state == enable;

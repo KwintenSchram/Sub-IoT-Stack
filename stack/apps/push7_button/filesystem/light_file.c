@@ -139,8 +139,11 @@ error_t light_files_initialize()
         log_print_error_string("Error initializing light effect file: %d", ret);
     }
 
+    // register callbacks for any changes in the light (config) file
     d7ap_fs_register_file_modified_callback(LIGHT_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(LIGHT_FILE_ID, &file_modified_callback);
+
+    // initialize hardware
     VEML7700_init(platf_get_i2c_handle());
     VEML7700_change_settings(light_config_file_cached.integration_time,
         light_config_file_cached.persistence_protect_number, light_config_file_cached.gain,
@@ -150,6 +153,7 @@ error_t light_files_initialize()
 static void file_modified_callback(uint8_t file_id)
 {
     if (file_id == LIGHT_CONFIG_FILE_ID) {
+        // light config file got modified, apply all configurations and transmit
         uint32_t size = LIGHT_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(LIGHT_CONFIG_FILE_ID, 0, light_config_file_cached.bytes, &size, ROOT_AUTH);
         VEML7700_change_settings(light_config_file_cached.integration_time,
@@ -174,6 +178,7 @@ static void file_modified_callback(uint8_t file_id)
         if (light_config_file_transmit_state)
             queue_add_file(light_config_file_cached.bytes, LIGHT_CONFIG_FILE_SIZE, LIGHT_CONFIG_FILE_ID);
     } else if (file_id == LIGHT_FILE_ID) {
+        // light file got modified (internally), transmit changes
         light_file_t light_file;
         uint32_t size = LIGHT_FILE_SIZE;
         d7ap_fs_read_file(LIGHT_FILE_ID, 0, light_file.bytes, &size, ROOT_AUTH);
@@ -182,6 +187,10 @@ static void file_modified_callback(uint8_t file_id)
     }
 }
 
+/**
+ * @brief check if the light interval exceeded the high or low threshold
+ * if it did, it will write to the light file which triggers the modified callback
+ */
 static void check_interrupt_state()
 {
     bool high_triggered, low_triggered;
@@ -235,6 +244,7 @@ void light_file_execute_measurement()
 
 void light_file_set_measure_state(bool enable)
 {
+    // enable or disable measurement of light
     timer_cancel_task(&light_file_execute_measurement);
     light_file_transmit_state = enable;
     light_config_file_transmit_state = enable;
@@ -253,6 +263,7 @@ void light_file_set_measure_state(bool enable)
 
 void light_file_set_test_mode(bool enable)
 {
+    // send every 30 seconds if light mode is enabled
     if (test_mode_state == enable)
         return;
     test_mode_state == enable;
@@ -299,6 +310,10 @@ void light_file_set_light_detection_mode(bool state)
 
 bool light_file_get_light_detection_mode() { return light_config_file_cached.light_detection_mode; }
 
+/**
+ * @brief Use the current light level as threshold for interrupts
+ * @param high_threshold indicate if the threshold you want to configure is the high or the low one
+ */
 void light_file_set_current_light_as_threshold(bool high_threshold)
 {
     float parsed_light_als;

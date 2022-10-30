@@ -82,6 +82,12 @@ static bool push7_state_file_transmit_state = false;
 static bool push7_state_config_file_transmit_state = false;
 static bool test_mode_state = false;
 
+/**
+ * @brief Initialize the push7 state file and push7 state config file
+ * The push7 state file tells us about the status of the application, it includes the versions and voltage
+ * the push7 state config file configures the global settings of the application like tx power and leds behaviour
+ * @return error_t
+ */
 error_t push7_state_files_initialize()
 {
     d7ap_fs_file_header_t volatile_file_header
@@ -117,6 +123,7 @@ error_t push7_state_files_initialize()
     if (ret != SUCCESS) {
         log_print_error_string("Error initializing push7_state effect file: %d", ret);
     }
+    // set the configurations of the configuration file and register a callback on all changes on those files
     adc_stuff_init();
     little_queue_set_led_state(push7_state_config_file_cached.led_flash_state);
     network_manager_set_tx_power(push7_state_config_file_cached.tx_power);
@@ -128,8 +135,10 @@ error_t push7_state_files_initialize()
 static void file_modified_callback(uint8_t file_id)
 {
     if (file_id == PUSH7_STATE_CONFIG_FILE_ID) {
+        // push7 state config file got modified
         uint32_t size = PUSH7_STATE_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes, &size, ROOT_AUTH);
+        // set a timer to read the voltage periodically
         if (push7_state_config_file_cached.enabled && push7_state_file_transmit_state)
             timer_post_task_delay(
                 &push7_state_file_execute_measurement, push7_state_config_file_cached.interval * TIMER_TICKS_PER_SEC);
@@ -141,6 +150,7 @@ static void file_modified_callback(uint8_t file_id)
             queue_add_file(
                 push7_state_config_file_cached.bytes, PUSH7_STATE_CONFIG_FILE_SIZE, PUSH7_STATE_CONFIG_FILE_ID);
     } else if (file_id == PUSH7_STATE_FILE_ID) {
+        // push7 state file got modified, most likely internally
         push7_state_file_t push7_state_file;
         uint32_t size = PUSH7_STATE_FILE_SIZE;
         d7ap_fs_read_file(PUSH7_STATE_FILE_ID, 0, push7_state_file.bytes, &size, ROOT_AUTH);
@@ -167,6 +177,7 @@ void push7_state_file_execute_measurement()
 
 void push7_state_file_set_measure_state(bool enable)
 {
+    // enable or disable the periodic voltage measurement
     timer_cancel_task(&push7_state_file_execute_measurement);
     push7_state_file_transmit_state = enable;
     push7_state_config_file_transmit_state = enable;
@@ -177,6 +188,7 @@ void push7_state_file_set_measure_state(bool enable)
 
 void push7_state_file_set_test_mode(bool enable)
 {
+    // in test mode, everything gets sent at 30 seconds interval instead of the current configuration
     if (test_mode_state == enable)
         return;
     test_mode_state == enable;
@@ -201,6 +213,7 @@ bool push7_flash_is_led_enabled() { return push7_state_config_file_cached.led_fl
 
 void push7_flash_set_led_enabled(bool state)
 {
+    // enable or disable the led after transmission
     if (push7_state_config_file_cached.led_flash_state != state) {
         push7_state_config_file_cached.led_flash_state = state;
         d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes,
@@ -210,6 +223,7 @@ void push7_flash_set_led_enabled(bool state)
 
 void push7_state_file_set_enabled(bool enable)
 {
+    // enable or disable sending and gathering the push7 state file
     if (push7_state_config_file_cached.enabled != enable) {
         push7_state_config_file_cached.enabled = enable;
         d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes,
@@ -219,6 +233,7 @@ void push7_state_file_set_enabled(bool enable)
 
 void push7_state_file_set_interval(uint32_t interval)
 {
+    // change the interval on which the push7 state file gets gathered and sent
     if (push7_state_config_file_cached.interval != interval) {
         push7_state_config_file_cached.interval = interval;
         d7ap_fs_write_file(PUSH7_STATE_CONFIG_FILE_ID, 0, push7_state_config_file_cached.bytes,
@@ -228,6 +243,7 @@ void push7_state_file_set_interval(uint32_t interval)
 
 void push7_state_file_set_high_tx_power_state(bool enable_high_tx_power)
 {
+    // change the tx power to the higher or lower preset
     if (enable_high_tx_power)
         push7_state_config_file_cached.tx_power = HIGH_TX_POWER;
     else
