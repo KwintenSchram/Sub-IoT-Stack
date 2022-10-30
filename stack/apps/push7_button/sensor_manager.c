@@ -76,11 +76,17 @@ static bool current_testmode_state = false;
 
 void sensor_manager_init()
 {
+    // global settings, versions and voltage files
     push7_state_files_initialize();
+    // pir files
     pir_files_initialize();
+    // light sensor files
     light_files_initialize();
+    // humidity and temperature files
     humidity_files_initialize();
+    // hall effect (magnetic field switch) files
     hall_effect_files_initialize();
+    // button files
     button_files_initialize();
 }
 
@@ -88,6 +94,8 @@ void sensor_manager_set_transmit_state(bool state)
 {
     if (state == current_transmit_state)
         return;
+
+    // enable or disable transmission of all sensor files
 
     humidity_file_set_measure_state(state);
     push7_state_file_set_measure_state(state);
@@ -104,6 +112,10 @@ void sensor_manager_set_test_mode(bool enable)
     if (enable == current_testmode_state)
         return;
 
+    // enable or disable test mode on all sensor files
+
+    // test mode will set all sensors to use a shorter transmission interval, to send on every action and to also send on button presses
+
     DPRINT("setting test mode: %d", enable);
     humidity_file_set_test_mode(enable);
     push7_state_file_set_test_mode(enable);
@@ -116,6 +128,9 @@ void sensor_manager_set_test_mode(bool enable)
 
 void sensor_manager_set_sensor_states(bool sensor_enabled_state_array[])
 {
+    // in sensor configuration state, the sensors can be enabled or disabled individually. 
+    // This passes an array of booleans which enable or disable the sensors
+
     DPRINT("setting enable states");
     DPRINT_DATA(sensor_enabled_state_array, 6);
     humidity_file_set_enabled(sensor_enabled_state_array[HUMIDITY_SENSOR_INDEX]);
@@ -134,6 +149,8 @@ void sensor_manager_set_sensor_states(bool sensor_enabled_state_array[])
 
 void sensor_manager_set_interval(uint32_t interval)
 {
+    // changing the interval will only change the sensors that use interval based transmissions
+
     humidity_file_set_interval(interval);
     light_file_set_interval(interval);
     DPRINT("setting sensor interval %d", interval);
@@ -158,6 +175,8 @@ void sensor_manager_get_sensor_states(bool sensor_enabled_state_array[])
 
 void sensor_manager_measure_sensor(uint8_t sensor)
 {
+    //trigger a measurement manually, only used in test mode
+
     if (sensor == 0)
         humidity_file_execute_measurement();
     else if (sensor == 1)
@@ -168,6 +187,8 @@ void sensor_manager_measure_sensor(uint8_t sensor)
 
 void sensor_manager_send_config_files()
 {
+    // send all sensor configuration files
+
     push7_state_file_transmit_config_file();
     humidity_file_transmit_config_file();
     light_file_transmit_config_file();

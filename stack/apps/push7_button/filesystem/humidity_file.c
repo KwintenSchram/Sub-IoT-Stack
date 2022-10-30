@@ -112,9 +112,10 @@ error_t humidity_files_initialize()
     if (ret != SUCCESS) {
         log_print_error_string("Error initializing humidity effect file: %d", ret);
     }
-
+    // initialize sensor
     HDC1080DM_init(platf_get_i2c_handle());
 
+    // register callbacks for when the files get modified internally or over the air
     d7ap_fs_register_file_modified_callback(HUMIDITY_CONFIG_FILE_ID, &file_modified_callback);
     d7ap_fs_register_file_modified_callback(HUMIDITY_FILE_ID, &file_modified_callback);
     sched_register_task(&humidity_file_execute_measurement);
@@ -123,6 +124,7 @@ error_t humidity_files_initialize()
 static void file_modified_callback(uint8_t file_id)
 {
     if (file_id == HUMIDITY_CONFIG_FILE_ID) {
+        // humidity config file got adapted, apply settings
         uint32_t size = HUMIDITY_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(HUMIDITY_CONFIG_FILE_ID, 0, humidity_config_file_cached.bytes, &size, ROOT_AUTH);
         if (humidity_config_file_cached.enabled && humidity_file_transmit_state) {
@@ -133,6 +135,7 @@ static void file_modified_callback(uint8_t file_id)
         if (humidity_config_file_transmit_state)
             queue_add_file(humidity_config_file_cached.bytes, HUMIDITY_CONFIG_FILE_SIZE, HUMIDITY_CONFIG_FILE_ID);
     } else if (file_id == HUMIDITY_FILE_ID) {
+        // humidity file got modified, transmit file
         humidity_file_t humidity_file;
         uint32_t size = HUMIDITY_FILE_SIZE;
         d7ap_fs_read_file(HUMIDITY_FILE_ID, 0, humidity_file.bytes, &size, ROOT_AUTH);

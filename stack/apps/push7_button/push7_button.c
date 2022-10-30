@@ -76,17 +76,22 @@ static void switch_state(APP_STATE_t new_state)
 {
     DPRINT("entering a new state: %d", new_state);
     current_app_state = new_state;
+
+    // write new state to the state machine file
     previous_app_state = state_machine_file_switch_state(current_app_state);
 
+    // only enable sensors and transmit when in operational or test state
     sensor_manager_set_transmit_state((new_state == OPERATIONAL_STATE) || (new_state == TEST_STATE));
 
     switch (new_state) {
     case OPERATIONAL_STATE:
+        // send the configuration files if we just came from sleep or from a configuration state
         if (previous_app_state != BOOTED_STATE && previous_app_state != OPERATIONAL_STATE
             && previous_app_state != TEST_STATE)
             sensor_manager_send_config_files();
         break;
     case SENSOR_CONFIGURATION_STATE:
+        // get from all sensors if they are enabled or not
         sensor_manager_get_sensor_states(sensor_enabled_state_array);
         break;
     case INTERVAL_CONFIGURATION_STATE:
@@ -97,19 +102,27 @@ static void switch_state(APP_STATE_t new_state)
     }
 }
 
+// if the sensor is enabled, flash once. If it is disabled, flash twice
 static void display_state(bool state) { led_flash(state ? 1 : 2); }
 
+// if we are in operational state, we don't care about the buttons
 static void operational_input_event_handler(input_type_t i, bool mask) { }
 
+// if we are in sensor configuration state, the buttons are used to enable or disable sensors
 static void sensor_configuration_input_event_handler(input_type_t i, bool mask)
 {
+    // only use button events
     if (i == STATE_COUNTER_EVENT || i == HALL_EFFECT_EVENT)
         return;
 
+    // apply the setting if all buttons are currently unpressed
     if (current_buttons_state == NO_BUTTON_PRESSED) {
+        // if no buttons were pressed in the meantime, we don't have to do anything
         if (max_buttons_state == NO_BUTTON_PRESSED)
             return;
 
+        // The first button press will only show if the sensor is enabled or not. The second button press will toggle it being enabled or not
+        // e.g. 1 button press: 1 led flash indicating the sensor is enabled. 2nd button press: 2 led flashes indicating the sensor is now disabled
         if (max_buttons_state == prev_max_buttons_state) {
             sensor_enabled_state_array[max_buttons_state] = !sensor_enabled_state_array[max_buttons_state];
             sensor_manager_set_sensor_states(sensor_enabled_state_array);
@@ -118,31 +131,39 @@ static void sensor_configuration_input_event_handler(input_type_t i, bool mask)
         }
         display_state(sensor_enabled_state_array[max_buttons_state]);
         prev_max_buttons_state = max_buttons_state;
+        // reset the max of buttons pressed
         max_buttons_state = NO_BUTTON_PRESSED;
     } else if (current_buttons_state > max_buttons_state)
+        // keep the maximum number of buttons pressed to see which combination of buttons is pressed
         max_buttons_state = current_buttons_state;
 }
 
+// if we are in interval configuration state, the buttons are used to configure a new interval for the humidity and light sensors
 static void interval_configuration_input_event_handler(input_type_t i, bool mask)
 {
+    // new_sensor_interval is always initialized on 0 when entering this state
+
     if (current_buttons_state != NO_BUTTON_PRESSED || mask == true) {
         return;
     }
 
     switch (i) {
     case BUTTON1_EVENT:
+        // button 1 will increase the interval by 30 seconds
         new_sensor_interval += 30;
         sensor_manager_set_interval(new_sensor_interval);
         led_flash(1);
         break;
 
     case BUTTON2_EVENT:
+        // button 2 will increase the interval by 10 minutes
         new_sensor_interval += 600;
         sensor_manager_set_interval(new_sensor_interval);
         led_flash(2);
         break;
 
     case BUTTON3_EVENT:
+        // button 3 will increase the interval by 2 hours
         new_sensor_interval += (2 * 60 * 60);
         sensor_manager_set_interval(new_sensor_interval);
         led_flash(3);
@@ -150,14 +171,17 @@ static void interval_configuration_input_event_handler(input_type_t i, bool mask
     }
 }
 
+// if we are in test state, the buttons are used to trigger a measurement. This is to test functionality easier
 static void test_state_input_event_handler(input_type_t i, bool mask)
 {
     if (current_buttons_state != NO_BUTTON_PRESSED || mask == true) {
         return;
     }
+    // button1 triggers humidity, button2 triggers light and button3 triggers a voltage measurement
     sensor_manager_measure_sensor(i);
 }
 
+// if we are in light detection configuration state, the buttons are used to set the light detection thresholds and to enable/disable it
 static void light_detection_configuration_state_event_handler(input_type_t i, bool mask)
 {
     if (current_buttons_state != NO_BUTTON_PRESSED || mask == true) {
@@ -165,18 +189,17 @@ static void light_detection_configuration_state_event_handler(input_type_t i, bo
     }
     switch (i) {
     case BUTTON1_EVENT:;
-        if (prev_input_type == BUTTON1_EVENT) {
+        // button1 first press will show if light detection is enabled, the second press will toggle it
+        if (prev_input_type == BUTTON1_EVENT)
             sensor_manager_set_light_detection_state(!sensor_manager_get_light_detection_state());
-            display_state(sensor_manager_get_light_detection_state());
-
-        } else {
-            display_state(sensor_manager_get_light_detection_state());
-        }
+        display_state(sensor_manager_get_light_detection_state());
         break;
     case BUTTON2_EVENT:;
+        // button2 will configure the high threshold of the light detection. If the light level goes above this level, it will send a message
         sensor_manager_set_light_threshold(true);
         break;
     case BUTTON3_EVENT:;
+        // button3 will configure the low threshold of the light detection. If the light level goes below this level, it will send a message
         sensor_manager_set_light_threshold(false);
         break;
     default:
@@ -185,6 +208,7 @@ static void light_detection_configuration_state_event_handler(input_type_t i, bo
     prev_input_type = i;
 }
 
+// this is the main input handler which will forward the input to the relevant state handler
 static void app_state_input_event_handler(input_type_t i, bool mask)
 {
     switch (current_app_state) {
@@ -208,14 +232,25 @@ static void app_state_input_event_handler(input_type_t i, bool mask)
     }
 }
 
+/**
+ * @brief Start of the application software
+ */
 void bootstrap()
 {
+    // initialize the network queue
     little_queue_init();
+
+    // initialize buttons
     button_file_register_cb(&userbutton_callback);
-    booted_button_state = button_get_booted_state();
+
+    // initialize a file that keeps the current and previous global state
     state_machine_file_initialize();
+
+    // initialize all files related to sensors and their configuration
     sensor_manager_init();
 
+    // depending on the initial button state, we should go to a different global state
+    booted_button_state = button_get_booted_state();
     switch (booted_button_state) {
     case BUTTON1_PRESSED:
         switch_state(SENSOR_CONFIGURATION_STATE);

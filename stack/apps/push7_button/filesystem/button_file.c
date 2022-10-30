@@ -82,12 +82,20 @@ static bool test_mode_state = false;
 
 static void userbutton_callback(uint8_t button_id1, uint8_t mask1, buttons_state_t buttons_state1)
 {
+    // button was pressed, let upper layer know and write data to file
     if (low_level_event_cb)
         low_level_event_cb(button_id1, mask1, buttons_state1);
     button_file_t button_file = { .button_id = button_id1, .mask = mask1, .buttons_state = buttons_state1 };
+    // this write file will trigger a file_modified_callback
     error_t ret = d7ap_fs_write_file(BUTTON_FILE_ID, 0, button_file.bytes, BUTTON_FILE_SIZE, ROOT_AUTH);
 }
 
+/**
+ * @brief Initialize both the button and the button config file
+ * The button file has all relevant data in it to let the world know the button was pressed, 
+ * the config file is for internal use to configure settings
+ * @return error_t
+ */
 error_t button_files_initialize()
 {
     d7ap_fs_file_header_t volatile_file_header
@@ -131,11 +139,14 @@ static void file_modified_callback(uint8_t file_id)
 {
 
     if (file_id == BUTTON_CONFIG_FILE_ID) {
+        // always send the button config file if any configurations have changed
         uint32_t size = BUTTON_CONFIG_FILE_SIZE;
         d7ap_fs_read_file(BUTTON_CONFIG_FILE_ID, 0, button_config_file_cached.bytes, &size, ROOT_AUTH);
         if (button_config_file_transmit_state)
             queue_add_file(button_config_file_cached.bytes, BUTTON_CONFIG_FILE_SIZE, BUTTON_CONFIG_FILE_ID);
     } else if (file_id == BUTTON_FILE_ID) {
+        // if a button gets pressed, this file will be written. 
+        // we want to send this file if it's written if the configuration allows us
         button_file_t button_file;
         uint32_t size = BUTTON_FILE_SIZE;
         d7ap_fs_read_file(BUTTON_FILE_ID, 0, button_file.bytes, &size, ROOT_AUTH);
@@ -155,12 +166,19 @@ void button_file_transmit_config_file()
 
 void button_file_register_cb(ubutton_callback_t callback) { low_level_event_cb = callback; }
 
+/**
+ * @brief Enable that this file is sent or not
+ */
 void button_file_set_measure_state(bool enable)
 {
     button_file_transmit_state = enable;
     button_config_file_transmit_state = enable;
 }
 
+/**
+ * @brief Enable testing mode which enables transmission on every change of data
+ * @param enable 
+ */
 void button_file_set_test_mode(bool enable)
 {
     if (test_mode_state == enable)

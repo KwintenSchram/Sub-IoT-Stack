@@ -73,19 +73,26 @@ static uint8_t key[]
 // Define the D7 interface configuration used for sending the ALP command on
 
 static alp_interface_config_d7ap_t itf_config = (alp_interface_config_d7ap_t){
+  // interface DASH7
   .itf_id = ALP_ITF_ID_D7ASP,
   .d7ap_session_config = {
     .qos = {
+        // PREFERRED indicates we first broadcast and then unicast to the closest gateway
         .qos_resp_mode = SESSION_RESP_MODE_PREFERRED,
+        // retry modes are not yet implemented
         .qos_retry_mode = SESSION_RETRY_MODE_NO
     },
+    // we don't want to start a dormant session but just want to send our data directly
     .dormant_timeout = 0,
     .addressee = {
         .ctrl = {
+            // use AES encryption with Counter
             .nls_method = AES_CTR,
+            // NBID is a broadcast which expects the amount of receivers present in the id field
             .id_type = ID_TYPE_NBID,
         },
-        .access_class = 0x01, // use access profile 0 and select the first subprofile
+        // use the first subprofile of access profile 0 
+        .access_class = 0x01,
         .id = { 3 }
     }
   }
@@ -93,13 +100,20 @@ static alp_interface_config_d7ap_t itf_config = (alp_interface_config_d7ap_t){
 
 static void network_timeout()
 {
+    // free all commands and let the upper layer know it failed
     alp_layer_free_commands();
     if(transmit_completed_cb)
         transmit_completed_cb(false);
 }
 
+/**
+ * @brief Callback when a command is completed
+ * @param tag_id the id of the command that is completed
+ * @param success indicates if the command completed with an error or not
+ */
 static void on_alp_command_completed_cb(uint8_t tag_id, bool success)
 {
+    // we're only interested in the command that we triggered ourselves
     if(active_tag_id != tag_id)
         return;
     timer_cancel_task(&network_timeout);
@@ -112,6 +126,11 @@ static void on_alp_command_completed_cb(uint8_t tag_id, bool success)
         transmit_completed_cb(success);
 }
 
+/**
+ * @brief Callback to receive the results
+ * @param alp_command The alp_command which triggered this result callback
+ * @param origin_itf_status The interface who originally sent the message or who sent an acknowledge on our message
+ */
 static void on_alp_command_result_cb(alp_command_t* alp_command, alp_interface_status_t* origin_itf_status)
 {
     if (origin_itf_status && (origin_itf_status->itf_id == ALP_ITF_ID_D7ASP) && (origin_itf_status->len > 0)) {
@@ -121,6 +140,14 @@ static void on_alp_command_result_cb(alp_command_t* alp_command, alp_interface_s
     network_state = NETWORK_MANAGER_READY;
 }
 
+/**
+ * @brief Transmit a file over the configured network
+ * @param file_id the id of the file we're trying to send
+ * @param offset the offset inside the file we're trying to send
+ * @param length the length of the data inside the file we're trying to send
+ * @param data a pointer to the data inside the file we're trying to send
+ * @return error_t
+ */
 error_t transmit_file(uint8_t file_id, uint32_t offset, uint32_t length, uint8_t *data)
 {
     bool ret;
@@ -141,8 +168,14 @@ error_t transmit_file(uint8_t file_id, uint32_t offset, uint32_t length, uint8_t
     alp_layer_process(command); 
     network_state = NETWORK_MANAGER_TRANSMITTING;
     timer_post_task_delay(&network_timeout, NETWORK_TIMEOUT);
+    return SUCCESS;
 }
 
+/**
+ * @brief The network quality is indicated by how many times we tried to send a message compared to how many times we successfully sent it
+ * @param acks The total amount of acknowledges we got
+ * @param nacks The total amount of times we failed to send a message
+ */
 void get_network_quality(uint8_t* acks, uint8_t* nacks)
 {
     acks = &acked_messages;
@@ -154,16 +187,22 @@ network_state_t get_network_manager_state()
     return network_state;
 }
 
+/**
+ * @brief Initializes the network configuration, also initializing the operating system itself
+ * @param last_transmit_completed_cb a callback which is called when a file got transmitted with or without error
+ */
 void network_manager_init(last_transmit_completed_callback last_transmit_completed_cb)
 {
-    d7ap_fs_init();
-    d7ap_init();
+    // initialize the filesystem, operating system and network stacks
     alp_init_args.alp_command_completed_cb = &on_alp_command_completed_cb;
     alp_init_args.alp_command_result_cb = &on_alp_command_result_cb;
     alp_layer_init(&alp_init_args, false);
+
+
     transmit_completed_cb = last_transmit_completed_cb;
     sched_register_task(&network_timeout);
 
+    // write some custom channel settings. This can also be done directly in d7ap_fs_data.c
     if (USE_PUSH7_CHANNEL_SETTINGS) { //TODO check why this doesn't work
         dae_access_profile_t push7_access_profile;
         d7ap_fs_read_access_class(0, &push7_access_profile);
@@ -180,11 +219,17 @@ void network_manager_init(last_transmit_completed_callback last_transmit_complet
         uint32_t length = D7A_FILE_NWL_SECURITY_KEY_SIZE;
         d7ap_fs_write_file(D7A_FILE_NWL_SECURITY_KEY, 0, key, length, ROOT_AUTH);
     }
+    // indicate everything is initialized and ready to transmit
     network_state = NETWORK_MANAGER_READY;
 }
 
+/**
+ * @brief set a custom tx power to increase range or to increase battery life
+ * @param tx_power a number indicating the power the device will be sending at. This should be a number between 0 and 20 (dB)
+ */
 void network_manager_set_tx_power(uint8_t tx_power)
 {
+    // we are sending all our messages on access class 0. Changing the output power is done by writing a new 'eirp' value to that access class
     dae_access_profile_t push7_access_profile;
     d7ap_fs_read_access_class(0, &push7_access_profile);
     push7_access_profile.subbands[0].eirp = tx_power;

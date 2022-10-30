@@ -76,6 +76,10 @@ error_t state_machine_file_initialize()
     return ret;
 }
 
+/**
+ * @brief Switch the state of the global state machine. This will shift the new state to current state and the current state to previous
+ * @param state The new state we want to change to
+ */
 uint8_t state_machine_file_switch_state(APP_STATE_t state)
 {
     state_machine_file_cached.previous_app_state = state_machine_file_cached.current_app_state;
