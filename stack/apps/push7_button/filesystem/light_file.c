@@ -202,7 +202,7 @@ static void check_interrupt_state()
     high_triggered = (raw_data > light_config_file_cached.threshold_high);
     low_triggered = (raw_data < light_config_file_cached.threshold_low);
 
-    if ((high_triggered == prev_high_trigger_state) || (low_triggered == prev_low_trigger_state)) {
+    if ((high_triggered != prev_high_trigger_state) || (low_triggered != prev_low_trigger_state)) {
         light_file_t light_file = { .light_level = (uint32_t)round(parsed_light_als * 1000),
             .light_level_raw = raw_data,
             .threshold_high_triggered = high_triggered,
