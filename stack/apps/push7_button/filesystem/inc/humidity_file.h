@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef HUMIDITY_FILE_H
 #define HUMIDITY_FILE_H

@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef __LITTLE_QUEUE_H
 #define __LITTLE_QUEUE_H

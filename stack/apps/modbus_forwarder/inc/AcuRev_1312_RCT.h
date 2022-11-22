@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef __ACUREF_1312_RCT_H
 #define __ACUREF_1312_RCT_H

@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef ENERGY_FILE_H
 #define ENERGY_FILE_H

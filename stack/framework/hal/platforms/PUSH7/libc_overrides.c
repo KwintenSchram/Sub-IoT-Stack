@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 
 #include "SEGGER_RTT.h"

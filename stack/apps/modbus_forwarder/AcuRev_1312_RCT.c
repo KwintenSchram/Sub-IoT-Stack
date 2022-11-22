@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,22 +67,22 @@ void acurev_1312_rct_init()
 bool acurev_get_real_energy(int64_t *real_energy)
 {
     uint32_t data;
-    uint16_t scale1, scale2;
+    uint16_t scale;
     bool success;
-    success = mmodbus_readHoldingRegister16i(device_address, Real_Energy_Sunpec_Scale_Factor_register, &scale1);
-    success = mmodbus_readHoldingRegister32i(device_address, Total_Real_Energy_Imported_register, &data) && success;
-    *real_energy = (int64_t)((int32_t)data * pow(10, (int16_t)scale1 + 3)); //convert to watt
+    success = mmodbus_readHoldingRegister16i(device_address, Real_Energy_Sunpec_Scale_Factor_register, &scale);
+    success &= mmodbus_readHoldingRegister32i(device_address, Total_Real_Energy_Imported_register, &data);
+    *real_energy = (int64_t)((int32_t)data * pow(10, (int16_t)scale + 3)); //convert to watt
     return success;
 }
 
 bool acurev_get_apparent_energy(int64_t *apparent_energy)
 {
     uint32_t data;
-    uint16_t scale1, scale2;
+    uint16_t scale;
     bool success;
-    success = mmodbus_readHoldingRegister16i(device_address, Apparent_Energy_Sunspec_Scale_Factor_register, &scale1);
-    success = mmodbus_readHoldingRegister32i(device_address, Total_Apparent_Energy_Imported_register, &data) && success;
-    *apparent_energy = (int32_t)data * pow(10, (int16_t)scale1 + 3); //convert to watt
+    success = mmodbus_readHoldingRegister16i(device_address, Apparent_Energy_Sunspec_Scale_Factor_register, &scale);
+    success &= mmodbus_readHoldingRegister32i(device_address, Total_Apparent_Energy_Imported_register, &data);
+    *apparent_energy = (int32_t)data * pow(10, (int16_t)scale + 3); //convert to watt
 
     return success;
 }

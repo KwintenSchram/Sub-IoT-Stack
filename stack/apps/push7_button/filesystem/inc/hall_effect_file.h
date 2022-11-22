@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef HALL_EFFECT_FILE_H
 #define HALL_EFFECT_FILE_H

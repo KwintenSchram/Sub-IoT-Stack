@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #include "energy_file.h"
 #include "d7ap_fs.h"
@@ -73,7 +73,7 @@ static void file_modified_callback(uint8_t file_id);
 void energy_file_execute_measurement();
 
 static energy_config_file_t energy_config_file_cached
-    = (energy_config_file_t) { .interval = 5, .enabled = true };
+    = (energy_config_file_t) { .interval = 15 * 60, .enabled = true };
 
 static bool energy_file_transmit_state = false;
 static bool energy_config_file_transmit_state = false;

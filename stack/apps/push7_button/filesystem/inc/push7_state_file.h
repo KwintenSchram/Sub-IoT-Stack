@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef PUSH7_STATE_FILE_H
 #define PUSH7_STATE_FILE_H
