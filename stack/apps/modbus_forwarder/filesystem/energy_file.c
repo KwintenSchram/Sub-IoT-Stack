@@ -169,7 +169,7 @@ void energy_file_execute_measurement()
     int64_t real_energy,apparent_energy;
     bool measurement_valid = true;
     measurement_valid = acurev_get_real_energy(&real_energy);
-    measurement_valid = measurement_valid && acurev_get_apparent_energy(&apparent_energy);
+    measurement_valid &= acurev_get_apparent_energy(&apparent_energy);
     DPRINT("valid %d, real energy %d, apparent energy %d", measurement_valid, (uint32_t)real_energy,(uint32_t) apparent_energy);
     energy_file_t energy_file = { .real_energy = real_energy, .reactive_energy = apparent_energy, .measurement_valid = measurement_valid};
     d7ap_fs_write_file(ENERGY_FILE_ID, 0, energy_file.bytes, ENERGY_FILE_SIZE, ROOT_AUTH);
