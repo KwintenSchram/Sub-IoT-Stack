@@ -51,7 +51,7 @@ typedef struct {
         uint8_t bytes[RAW_ENERGY_FILE_SIZE];
         struct {
             int64_t real_energy;
-            int64_t reactive_energy;
+            int64_t apparent_energy;
             bool measurement_valid;
         } __attribute__((__packed__));
     };
@@ -80,7 +80,7 @@ static bool energy_config_file_transmit_state = false;
 
 /**
  * @brief Initialize the energy file and energy config file
- * The energy file tells us about the energy consumption of the connected installation, it includes the real energy and reactive energy
+ * The energy file tells us about the energy consumption of the connected installation, it includes the real energy and apparent energy
  * the energy config file configures the transmission interval and if the file is supposed to be send when a measruement occurs
  * @return error_t
  */
@@ -171,7 +171,7 @@ void energy_file_execute_measurement()
     measurement_valid = acurev_get_real_energy(&real_energy);
     measurement_valid &= acurev_get_apparent_energy(&apparent_energy);
     DPRINT("valid %d, real energy %d, apparent energy %d", measurement_valid, (uint32_t)real_energy,(uint32_t) apparent_energy);
-    energy_file_t energy_file = { .real_energy = real_energy, .reactive_energy = apparent_energy, .measurement_valid = measurement_valid};
+    energy_file_t energy_file = { .real_energy = real_energy, .apparent_energy = apparent_energy, .measurement_valid = measurement_valid};
     d7ap_fs_write_file(ENERGY_FILE_ID, 0, energy_file.bytes, ENERGY_FILE_SIZE, ROOT_AUTH);
 }
 

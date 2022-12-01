@@ -30,6 +30,8 @@
 #include "mmodbus.h"
 #include "math.h"
 
+#define MODBUS_MAX_RETRIES 10
+
 
 #ifdef true
 #include "log.h"
@@ -68,10 +70,15 @@ bool acurev_get_real_energy(int64_t *real_energy)
 {
     uint32_t data;
     uint16_t scale;
-    bool success;
-    success = mmodbus_readHoldingRegister16i(device_address, Real_Energy_Sunpec_Scale_Factor_register, &scale);
-    success &= mmodbus_readHoldingRegister32i(device_address, Total_Real_Energy_Imported_register, &data);
-    *real_energy = (int64_t)((int32_t)data * pow(10, (int16_t)scale + 3)); //convert to watt
+    bool success = false;
+    uint8_t retry_counter = 0;
+    while(!success && retry_counter <= MODBUS_MAX_RETRIES)
+    {
+        success = mmodbus_readHoldingRegister16i(device_address, Real_Energy_Sunpec_Scale_Factor_register, &scale);
+        success &= mmodbus_readHoldingRegister32i(device_address, Total_Real_Energy_Imported_register, &data);
+        *real_energy = (int64_t)((int32_t)data * pow(10, (int16_t)scale + 3)); //convert to watt
+        retry_counter++;
+    }
     return success;
 }
 
@@ -79,10 +86,15 @@ bool acurev_get_apparent_energy(int64_t *apparent_energy)
 {
     uint32_t data;
     uint16_t scale;
-    bool success;
-    success = mmodbus_readHoldingRegister16i(device_address, Apparent_Energy_Sunspec_Scale_Factor_register, &scale);
-    success &= mmodbus_readHoldingRegister32i(device_address, Total_Apparent_Energy_Imported_register, &data);
-    *apparent_energy = (int32_t)data * pow(10, (int16_t)scale + 3); //convert to watt
+    bool success = false;
+    uint8_t retry_counter = 0;
+    while(!success && retry_counter <= MODBUS_MAX_RETRIES)
+    {
+        success = mmodbus_readHoldingRegister16i(device_address, Apparent_Energy_Sunspec_Scale_Factor_register, &scale);
+        success &= mmodbus_readHoldingRegister32i(device_address, Total_Apparent_Energy_Imported_register, &data);
+        *apparent_energy = (int32_t)data * pow(10, (int16_t)scale + 3); //convert to watt
+        retry_counter++;
+    }
 
     return success;
 }
