@@ -47,7 +47,7 @@
 #include "network_manager.h"
 
 #define FRAMEWORK_LITTLE_QUEUE_LOG 1
-#define MAX_FILE_SIZE 10
+#define MAX_FILE_SIZE 100
 #define MAX_RETRY_ATTEMPTS 5
 
 #ifdef FRAMEWORK_LITTLE_QUEUE_LOG
@@ -83,7 +83,7 @@ static void queue_transmit_completed(bool success)
         retry_counter = 0;
 
         if (!success)
-            log_print_error_string("file %d discarded, to many tries", file_id);
+            log_print_error_string("file %d discarded, to many tries \n", file_id);
     } else
         retry_counter++;
 
