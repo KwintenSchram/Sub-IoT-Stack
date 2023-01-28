@@ -102,6 +102,10 @@ static void network_timeout()
 {
     // free all commands and let the upper layer know it failed
     alp_layer_free_commands();
+    alp_command_t* command = alp_layer_command_alloc(true, true);
+    alp_append_stop_itf_action(command);
+    alp_append_start_itf_action(command);
+    alp_layer_process(command);
     if(transmit_completed_cb)
         transmit_completed_cb(false);
 }

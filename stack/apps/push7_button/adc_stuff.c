@@ -32,7 +32,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "adc_stuff.h"
+#include "stm32_common_gpio.h"
 
+#define PORT_BASE(pin)  ((GPIO_TypeDef*)(pin & ~0x0F))
 ADC_HandleTypeDef hadc;
 
 uint16_t current_voltage = 0;
@@ -60,7 +62,7 @@ static void MX_ADC_Init(void)
     if (HAL_ADC_Init(&hadc) != HAL_OK) {
         log_print_string("error");
     }
-    sConfig.Channel = ADC_CHANNEL_5;
+    sConfig.Channel = BATTERY_VOLTAGE_ADC_CHANNEL;
     sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
     if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK) {
         log_print_string("error");
@@ -73,10 +75,10 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc_local)
     if (hadc_local->Instance == ADC1) {
         __HAL_RCC_ADC1_CLK_ENABLE();
         __HAL_RCC_GPIOA_CLK_ENABLE();
-        GPIO_InitStruct.Pin = GPIO_PIN_5;
+        GPIO_InitStruct.Pin = 1 << GPIO_PIN(BATTERY_VOLTAGE_PIN);
         GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+        HAL_GPIO_Init(PORT_BASE(BATTERY_VOLTAGE_PIN), &GPIO_InitStruct);
     }
 }
 
@@ -84,7 +86,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc_local)
 {
     if (hadc_local->Instance == ADC1) {
         __HAL_RCC_ADC1_CLK_DISABLE();
-        HAL_GPIO_DeInit(GPIOA, GPIO_PIN_5);
+        HAL_GPIO_DeInit(PORT_BASE(BATTERY_VOLTAGE_PIN), 1 << GPIO_PIN(BATTERY_VOLTAGE_PIN));
     }
 }
 
