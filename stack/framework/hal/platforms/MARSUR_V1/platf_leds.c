@@ -58,7 +58,7 @@ void __led_init()
 
 static void __led_on_sched_off()
 {
-    hw_gpio_set(LED_WHITE);
+    hw_gpio_set(leds[LED_WHITE]);
     timer_post_task_delay(&end_flash_white, FLASH_ON_DURATION);
 }
 
@@ -66,7 +66,7 @@ static void end_flash_white()
 {
     if(led0_manual_mode)
         return;
-    hw_gpio_clr(LED_WHITE);
+    hw_gpio_clr(leds[LED_WHITE]);
     if (remaining_flashes == 0)
         flashing = false;
     else {
@@ -105,6 +105,17 @@ void led_off(unsigned char led_nr)
     }
 }
 
+void led_set(uint8_t led_nr, bool state)
+{
+    if (led_nr < PLATFORM_NUM_LEDS)
+        hw_gpio_set(leds[led_nr]);
+
+    if(state)
+        led_on(led_nr);
+    else
+        led_off(led_nr);
+}
+
 void led_toggle(unsigned char led_nr)
 {
     if (led_nr < PLATFORM_NUM_LEDS)
@@ -113,10 +124,11 @@ void led_toggle(unsigned char led_nr)
 
 void led_flash(uint8_t flash_times)
 {
-    if (flashing||led0_manual_mode)
+    if (flashing || led0_manual_mode)
         return;
     if (!flash_times)
         return;
     remaining_flashes = flash_times - 1;
+    flashing = true;
     __led_on_sched_off();
 }

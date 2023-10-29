@@ -40,5 +40,6 @@ void device_state_file_execute_measurement();
 void device_state_file_transmit_config_file();
 void device_state_file_set_high_tx_power_state(bool enable_high_tx_power);
 bool device_state_file_get_high_tx_power_state();
+void device_state_file_set_high_power_led_state(bool high_power_led_state);
 
 #endif

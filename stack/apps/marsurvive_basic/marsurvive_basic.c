@@ -30,6 +30,7 @@
 #include "scheduler.h"
 #include "sensor_manager.h"
 #include "state_machine_file.h"
+#include "device_state_file.h"
 
 #define FRAMEWORK_APP_LOG 1
 #ifdef FRAMEWORK_APP_LOG
@@ -67,6 +68,8 @@ static buttons_state_t booted_button_state;
 static bool initial_button_press_released = false;
 static bool sensor_enabled_state_array[ALL_BUTTONS_PRESSED+1];
 static uint32_t new_sensor_interval = 0;
+static bool current_high_power_led_state = false;
+static bool previous_high_power_led_state = false;
 
 static void userbutton_callback(uint8_t button_id, uint8_t mask, buttons_state_t buttons_state)
 {
@@ -84,17 +87,6 @@ static void switch_state(APP_STATE_t new_state)
 
     // only enable sensors and transmit when in operational or test state
     sensor_manager_set_transmit_state(new_state == OPERATIONAL_STATE);
-
-    // switch (new_state) { // no other states are implemented currently
-    // case OPERATIONAL_STATE:
-    //     // send the configuration files if we just came from sleep or from a configuration state
-    //     if (previous_app_state != BOOTED_STATE && previous_app_state != OPERATIONAL_STATE
-    //         && previous_app_state != TEST_STATE)
-    //         sensor_manager_send_config_files();
-    //     break;
-    // default:;
-    //     break;
-    // }
 }
 
 static void operational_input_event_handler(input_type_t i, bool mask) 
@@ -107,11 +99,19 @@ static void operational_input_event_handler(input_type_t i, bool mask)
             led_on(0);
         break;
     case BUTTON1_EVENT:
-        if(mask)
-            led_toggle(1);
+        current_high_power_led_state = mask ? !current_high_power_led_state : current_high_power_led_state;
         break;
+    case WATER_INPUT_EVENT:
+        current_high_power_led_state = mask ? true : current_high_power_led_state;
     default:
         break;
+    }
+
+    if(previous_high_power_led_state != current_high_power_led_state)
+    {
+        led_set(1, current_high_power_led_state);
+        device_state_file_set_high_power_led_state(current_high_power_led_state);
+        previous_high_power_led_state = current_high_power_led_state;
     }
 }
 

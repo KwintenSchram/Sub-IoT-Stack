@@ -40,7 +40,7 @@
 
 #define DEVICE_STATE_FILE_ID 56
 #define DEVICE_STATE_FILE_SIZE sizeof(device_state_file_t)
-#define RAW_DEVICE_STATE_FILE_SIZE 4
+#define RAW_DEVICE_STATE_FILE_SIZE 5
 
 #define DEVICE_STATE_CONFIG_FILE_ID 66
 #define DEVICE_STATE_CONFIG_FILE_SIZE sizeof(device_state_config_file_t)
@@ -57,6 +57,7 @@ typedef struct {
             uint16_t battery_voltage;
             uint8_t hw_version;
             uint8_t sw_version;
+            bool high_power_led_state;
         } __attribute__((__packed__));
     };
 } device_state_file_t;
@@ -81,6 +82,7 @@ static device_state_config_file_t device_state_config_file_cached
 static bool device_state_file_transmit_state = false;
 static bool device_state_config_file_transmit_state = false;
 static bool test_mode_state = false;
+static bool cached_high_power_led_state = false;
 
 /**
  * @brief Initialize the push7 state file and push7 state config file
@@ -171,7 +173,7 @@ void device_state_file_execute_measurement()
 {
     update_battery_voltage();
     uint16_t voltage = get_battery_voltage();
-    device_state_file_t device_state_file = { .hw_version = 0, .sw_version = 0, .battery_voltage = voltage };
+    device_state_file_t device_state_file = { .hw_version = 0, .sw_version = 0, .battery_voltage = voltage, .high_power_led_state = cached_high_power_led_state };
     d7ap_fs_write_file(DEVICE_STATE_FILE_ID, 0, device_state_file.bytes, DEVICE_STATE_FILE_SIZE, ROOT_AUTH);
 }
 
@@ -250,6 +252,19 @@ void device_state_file_set_high_tx_power_state(bool enable_high_tx_power)
         device_state_config_file_cached.tx_power = LOW_TX_POWER;
     d7ap_fs_write_file(
         DEVICE_STATE_CONFIG_FILE_ID, 0, device_state_config_file_cached.bytes, DEVICE_STATE_CONFIG_FILE_SIZE, ROOT_AUTH);
+}
+
+
+void device_state_file_set_high_power_led_state(bool high_power_led_state)
+{
+    // change the tx power to the higher or lower preset
+    if(high_power_led_state != cached_high_power_led_state)
+    {
+        cached_high_power_led_state = high_power_led_state;
+        uint16_t voltage = get_battery_voltage();
+        device_state_file_t device_state_file = { .hw_version = 0, .sw_version = 0, .battery_voltage = voltage, .high_power_led_state = cached_high_power_led_state };
+        d7ap_fs_write_file(DEVICE_STATE_FILE_ID, 0, device_state_file.bytes, DEVICE_STATE_FILE_SIZE, ROOT_AUTH);
+    }
 }
 
 bool device_state_file_get_high_tx_power_state() { return (device_state_config_file_cached.tx_power == HIGH_TX_POWER); }

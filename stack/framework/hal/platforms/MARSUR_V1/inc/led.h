@@ -34,5 +34,6 @@
 
 bool led_init(void);
 void led_flash(uint8_t flash_times);
+void led_set(uint8_t led_nr, bool state);
 
 #endif
