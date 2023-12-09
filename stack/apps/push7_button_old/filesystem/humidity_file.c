@@ -47,8 +47,8 @@
 #define HUMIDITY_CONFIG_FILE_SIZE sizeof(humidity_config_file_t)
 #define RAW_HUMIDITY_CONFIG_FILE_SIZE 5
 
-#define TESTMODE_HUMID_INTERVAL_SEC 30
-#define DEFAULT_HUMIDITY_INTERVAL_SEC 30
+#define TESTMODE_HUMID_INTERVAL_SEC 60
+#define DEFAULT_HUMIDITY_INTERVAL_SEC 60
 
 typedef struct {
     union {

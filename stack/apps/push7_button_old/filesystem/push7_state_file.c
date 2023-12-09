@@ -76,7 +76,7 @@ typedef struct {
 static void file_modified_callback(uint8_t file_id);
 
 static push7_state_config_file_t push7_state_config_file_cached
-    = (push7_state_config_file_t) { .interval = 5 * 60, .led_flash_state = true, .enabled = true, .tx_power = LOW_TX_POWER };
+    = (push7_state_config_file_t) { .interval = 10 * 60, .led_flash_state = true, .enabled = true, .tx_power = LOW_TX_POWER };
 
 static bool push7_state_file_transmit_state = false;
 static bool push7_state_config_file_transmit_state = false;
