@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #include "state_machine_file.h"
 #include "d7ap_fs.h"

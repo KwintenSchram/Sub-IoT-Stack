@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef __PLATFORM_USERBUTTON_H_
 #define __PLATFORM_USERBUTTON_H_

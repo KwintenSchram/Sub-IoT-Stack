@@ -20,20 +20,25 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
-#ifndef HALL_EFFECT_FILE_H
-#define HALL_EFFECT_FILE_H
+#ifndef DEVICE_STATE_FILE_H
+#define DEVICE_STATE_FILE_H
 
 #include "errors.h"
 #include "stdint.h"
 
-error_t hall_effect_files_initialize();
-void hall_effect_file_set_measure_state(bool enable);
-void hall_effect_file_set_test_mode(bool enable);
-bool hall_effect_file_is_enabled();
-void hall_effect_file_set_enabled(bool enable);
-void hall_effect_file_transmit_config_file();
-
+error_t device_state_files_initialize();
+void device_state_file_set_measure_state(bool enable);
+void device_state_file_set_test_mode(bool enable);
+bool device_state_file_is_enabled();
+void device_state_file_set_enabled(bool enable);
+void device_state_file_set_interval(uint32_t interval);
+bool device_state_flash_is_led_enabled();
+void device_state_flash_set_led_enabled(bool state);
+void device_state_file_execute_measurement();
+void device_state_file_transmit_config_file();
+void device_state_file_set_high_tx_power_state(bool enable_high_tx_power);
+bool device_state_file_get_high_tx_power_state();
 
 #endif

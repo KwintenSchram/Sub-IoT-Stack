@@ -48,7 +48,6 @@ APP_BUILD(
     little_queue.c 
     sensor_manager.c 
     filesystem/button_file.c 
-    filesystem/hall_effect_file.c 
-    filesystem/push7_state_file.c 
+    filesystem/device_state_file.c 
     filesystem/state_machine_file.c 
     LIBS ${libs})

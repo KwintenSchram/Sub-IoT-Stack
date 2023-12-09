@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef STATE_MACHINE_FILE_H
 #define STATE_MACHINE_FILE_H

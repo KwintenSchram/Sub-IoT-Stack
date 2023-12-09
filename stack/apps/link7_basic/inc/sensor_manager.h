@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef __NETWORK_MANAGER_H
 #define __NETWORK_MANAGER_H
@@ -30,22 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum {
-    HALL_EFFECT_SENSOR_INDEX = BUTTON1_PRESSED,
-    QUEUE_LIGHT_STATE = BUTTON2_PRESSED,
-    HIGH_TX_POWER_STATE = ALL_BUTTONS_PRESSED
-} SENSOR_ARRAY_INDEXES;
-
 void sensor_manager_init();
 void sensor_manager_set_transmit_state(bool state);
-void sensor_manager_set_test_mode(bool enable);
-void sensor_manager_set_sensor_states(bool sensor_enabled_state_array[]);
-void sensor_manager_get_sensor_states(bool sensor_enabled_state_array[]);
-void sensor_manager_set_interval(uint32_t interval);
-void sensor_manager_measure_sensor(uint8_t sensor);
-void sensor_manager_send_config_files();
-void sensor_manager_set_light_threshold(bool high_threshold);
-bool sensor_manager_get_light_detection_state();
-void sensor_manager_set_light_detection_state(bool state);
 
 #endif //__NETWORK_MANAGER_H
