@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 
 #include "button.h"
@@ -33,7 +33,7 @@
 #include <debug.h>
 #include <string.h>
 
-#if PLATFORM_NUM_BUTTONS != 2
+#if PLATFORM_NUM_BUTTONS != 1
 #error "PLATFORM_NUM_BUTTONS does not match the expected value. Update platform CMakeLists.txt or platform_userbutton.c"
 #endif
 
@@ -60,7 +60,6 @@ __LINK_C void __ubutton_init()
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     buttons[0].button_id = BUTTON1_PIN;
-    buttons[1].button_id = BUTTON2_PIN;
     for (int i = 0; i < PLATFORM_NUM_BUTTONS; i++) 
 	{
         hw_gpio_configure_pin_stm(buttons[i].button_id, &GPIO_InitStruct);

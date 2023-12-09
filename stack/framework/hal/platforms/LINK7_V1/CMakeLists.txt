@@ -46,7 +46,7 @@ PLATFORM_PARAM(PLATFORM_MODEM_INTERFACE_UART     "0"      STRING "The UART chann
 PLATFORM_PARAM(PLATFORM_MODEM_INTERFACE_BAUDRATE "115200" STRING "The baudrate used by the modem interface configuration."       )
 
 PLATFORM_PARAM(PLATFORM_NUM_LEDS "1" STRING "The number of LEDs.")
-PLATFORM_PARAM(PLATFORM_NUM_BUTTONS "2" STRING "The number of buttons.")
+PLATFORM_PARAM(PLATFORM_NUM_BUTTONS "1" STRING "The number of buttons.")
 
 #Add a 'global' definition for the specific MCU
 EXPORT_GLOBAL_COMPILE_DEFINITIONS("-D${PLATFORM_MCU}")

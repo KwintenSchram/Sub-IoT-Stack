@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 
 #ifndef __PLATFORM_H_
@@ -51,8 +51,8 @@
  * USERBUTTON DEFINITIONS *
  *************************/
 
-#define BUTTON1_PIN PIN(0, 1)
-#define BUTTON2_PIN PIN(1, 15)
+// #define BUTTON2_PIN PIN(0, 1) //DO NOT USE
+#define BUTTON1_PIN PIN(1, 15)
 
 #define INTERRUPT_TEST_PIN PIN(0, 10)
 

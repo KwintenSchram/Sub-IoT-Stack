@@ -20,7 +20,7 @@
 /* \file
  *
  *
- * @author info@liquibit.be
+ * @author contact@liquibit.be
  */
 #ifndef __NETWORK_MANAGER_H
 #define __NETWORK_MANAGER_H
